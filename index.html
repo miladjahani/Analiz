@@ -123,9 +123,9 @@
     </div>
 
     <script>
-        // --- START OF EMBEDDED Levenberg-Marquardt Library ---
+        // --- START OF EMBEDDED Levenberg-Marquardt Library (FIXED) ---
         // This code is a self-contained implementation of the LM algorithm.
-        // No external script loading is needed for this core functionality.
+        // All 'const' declarations have been changed to 'let' for maximum browser compatibility.
         const LM = (function() {
             function check(data, F, options) {
                 if (!data.x || !data.y) throw new Error('Data must be an object with x and y properties');
@@ -135,14 +135,14 @@
 
             function gradient(F, p, h) {
                 h = h || 1e-5;
-                const n = p.length;
-                const grad = new Array(n);
-                const p_h = p.slice();
+                let n = p.length;
+                let grad = new Array(n);
+                let p_h = p.slice();
                 for (let i = 0; i < n; i++) {
                     p_h[i] += h;
-                    const f_p_h = F(p_h);
+                    let f_p_h = F(p_h);
                     p_h[i] -= h;
-                    const f_p = F(p);
+                    let f_p = F(p);
                     grad[i] = f_p_h.map((val, j) => (val - f_p[j]) / h);
                 }
                 return grad;
@@ -150,8 +150,8 @@
 
             function levenbergMarquardt(data, F, options) {
                 check(data, F, options);
-                const { x, y } = data;
-                const {
+                let { x, y } = data;
+                let {
                     maxIterations = 100,
                     initialValues = new Array(F.length).fill(1),
                     damping = 0.001,
@@ -164,20 +164,20 @@
                 let sse = err.reduce((a, b) => a + b * b, 0);
 
                 for (let iter = 0; iter < maxIterations; iter++) {
-                    const jacobian = gradient(p => x.map(F(p)), p, gradientDifference);
-                    const JT = jacobian[0].map((_, c) => jacobian.map(r => r[c]));
-                    const JTE = JT.map(row => row.reduce((sum, val, i) => sum + val * err[i], 0));
-                    const JTJ = JT.map(row => JT.map(col => row.reduce((sum, val, i) => sum + val * col[i], 0)));
+                    let jacobian = gradient(p => x.map(F(p)), p, gradientDifference);
+                    let JT = jacobian[0].map((_, c) => jacobian.map(r => r[c]));
+                    let JTE = JT.map(row => row.reduce((sum, val, i) => sum + val * err[i], 0));
+                    let JTJ = JT.map(row => JT.map(col => row.reduce((sum, val, i) => sum + val * col[i], 0)));
 
-                    const n = p.length;
-                    const L = JTJ.map(row => row.slice());
+                    let n = p.length;
+                    let L = JTJ.map(row => row.slice());
                     for (let i = 0; i < n; i++) L[i][i] += damping;
 
                     try {
-                        const h = solve(L, JTE);
-                        const p_new = p.map((val, i) => val + h[i]);
-                        const err_new = y.map((val, i) => val - F(p_new)(x[i]));
-                        const sse_new = err_new.reduce((a, b) => a + b * b, 0);
+                        let h = solve(L, JTE);
+                        let p_new = p.map((val, i) => val + h[i]);
+                        let err_new = y.map((val, i) => val - F(p_new)(x[i]));
+                        let sse_new = err_new.reduce((a, b) => a + b * b, 0);
 
                         if (sse_new < sse) {
                             p = p_new;
@@ -196,7 +196,7 @@
             }
 
             function solve(A, b) {
-                const n = A.length;
+                let n = A.length;
                 for (let i = 0; i < n; i++) {
                     let maxEl = Math.abs(A[i][i]);
                     let maxRow = i;
@@ -211,7 +211,7 @@
                     }
                     [b[maxRow], b[i]] = [b[i], b[maxRow]];
                     for (let k = i + 1; k < n; k++) {
-                        const c = -A[k][i] / A[i][i];
+                        let c = -A[k][i] / A[i][i];
                         for (let j = i; j < n; j++) {
                             if (i === j) A[k][j] = 0;
                             else A[k][j] += c * A[i][j];
@@ -219,7 +219,7 @@
                         b[k] += c * b[i];
                     }
                 }
-                const x = new Array(n);
+                let x = new Array(n);
                 for (let i = n - 1; i > -1; i--) {
                     x[i] = b[i] / A[i][i];
                     for (let k = i - 1; k > -1; k--) {
