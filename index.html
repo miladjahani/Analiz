@@ -14,8 +14,8 @@
     <!-- Chart.js (for plotting) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
-    <!-- Levenberg-Marquardt (for non-linear regression) -->
-    <script src="https://cdn.jsdelivr.net/npm/ml-levenberg-marquardt/dist/levenberg-marquardt.min.js"></script>
+    <!-- Levenberg-Marquardt (for non-linear regression) - CDN CHANGED FOR RELIABILITY -->
+    <script src="https://unpkg.com/ml-levenberg-marquardt/dist/levenberg-marquardt.min.js"></script>
 
     <!-- Persian Font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -69,7 +69,6 @@
             border-color: #1d4ed8;
             background-color: #eff6ff;
         }
-        /* CSS FIX: Removed display properties from here to avoid conflict with Tailwind's 'hidden' class */
         #loading-overlay {
             position: fixed;
             top: 0;
@@ -85,7 +84,6 @@
 </head>
 <body class="p-4 md:p-8">
 
-    <!-- HTML FIX: Added Tailwind flex classes here. The 'hidden' class now correctly controls visibility. -->
     <div id="loading-overlay" class="hidden flex justify-center items-center">
         <p>در حال تحلیل، لطفاً شکیبا باشید...</p>
     </div>
@@ -173,26 +171,17 @@
         };
 
         // --- مدیریت رویدادهای Drag & Drop ---
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('dragover');
-        });
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('dragover');
-        });
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('dragover'); });
         dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
             dropZone.classList.remove('dragover');
             const files = e.dataTransfer.files;
-            if (files.length) {
-                handleFile(files[0]);
-            }
+            if (files.length) handleFile(files[0]);
         });
         fileInput.addEventListener('change', (e) => {
             const files = e.target.files;
-            if (files.length) {
-                handleFile(files[0]);
-            }
+            if (files.length) handleFile(files[0]);
         });
 
         // --- تابع پردازش فایل اکسل ---
@@ -200,12 +189,16 @@
             fileNameDisplay.textContent = `فایل انتخاب شده: ${file.name}`;
             const reader = new FileReader();
             reader.onload = (e) => {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const firstSheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheetName];
-                rawData = XLSX.utils.sheet_to_json(worksheet);
-                alert('فایل با موفقیت خوانده شد. لطفاً نام ستون‌ها را بررسی و دکمه تحلیل را بزنید.');
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    rawData = XLSX.utils.sheet_to_json(worksheet);
+                    alert('فایل با موفقیت خوانده شد. لطفاً نام ستون‌ها را بررسی و دکمه تحلیل را بزنید.');
+                } catch (error) {
+                    alert(`خطا در خواندن فایل اکسل: ${error.message}`);
+                }
             };
             reader.readAsArrayBuffer(file);
         }
@@ -219,9 +212,13 @@
 
             loadingOverlay.classList.remove('hidden');
 
-            // استفاده از setTimeout برای نمایش لودینگ قبل از شروع محاسبات سنگین
             setTimeout(() => {
                 try {
+                    // BUG FIX: Check if the LM library is loaded
+                    if (typeof LM === 'undefined' || typeof LM.default !== 'function') {
+                        throw new Error("کتابخانه تحلیل (LM) بارگذاری نشده یا نامعتبر است. لطفاً اتصال اینترنت خود را بررسی کرده و صفحه را دوباره بارگذاری کنید.");
+                    }
+
                     const timeCol = document.getElementById('time-col').value;
                     const dataCol = document.getElementById('data-col').value;
 
@@ -230,37 +227,28 @@
                     }
 
                     const data = rawData.map(row => ({
-                        t: row[timeCol],
-                        y: row[dataCol]
-                    })).filter(p => p.t != null && p.y != null);
+                        t: parseFloat(row[timeCol]),
+                        y: parseFloat(row[dataCol])
+                    })).filter(p => !isNaN(p.t) && !isNaN(p.y));
 
                     const tData = data.map(p => p.t);
                     const yData = data.map(p => p.y);
                     lastDay = Math.max(...tData);
 
-                    // تعریف تابع برای بهینه‌سازی (Levenberg-Marquardt)
-                    const fnToOptimize = (params) => {
-                        const [A, k, C] = params;
-                        return tData.map(t => A * Math.exp(-k * t) + C);
-                    };
+                    // BUG FIX: Rewritten the fitting logic to match the current library API
+                    const fnToFit = (params) => (t) => modelFunc(t, params);
 
-                    // مقادیر اولیه برای پارامترها
+                    const dataForFitting = { x: tData, y: yData };
                     const initialGuess = [Math.max(...yData), 0.1, Math.min(...yData)];
-                    
                     const options = {
                         damping: 1.5,
                         initialValues: initialGuess,
-                        gradientDifference: 10e-2,
-                        maxIterations: 100,
-                        errorTolerance: 10e-3,
+                        maxIterations: 200,
                     };
                     
-                    // اجرای بهینه‌سازی
-                    const lm = new LM.default({ fn: fnToOptimize }, yData, options);
-                    lm.run();
-                    fitParams = lm.predict.solution;
+                    const result = LM.default(dataForFitting, fnToFit, options);
+                    fitParams = result.parameterValues;
 
-                    // نمایش نتایج
                     document.getElementById('param-A').textContent = fitParams[0].toFixed(2);
                     document.getElementById('param-k').textContent = fitParams[1].toFixed(3);
                     document.getElementById('param-C').textContent = fitParams[2].toFixed(2);
@@ -278,10 +266,7 @@
         // --- تابع رسم نمودار ---
         function plotResults(tData, yData) {
             const ctx = document.getElementById('chart').getContext('2d');
-            
-            if (chartInstance) {
-                chartInstance.destroy();
-            }
+            if (chartInstance) chartInstance.destroy();
 
             const fittedData = tData.map(t => modelFunc(t, fitParams));
 
@@ -292,7 +277,6 @@
                         label: 'داده‌های واقعی',
                         data: tData.map((t, i) => ({ x: t, y: yData[i] })),
                         backgroundColor: 'rgba(29, 78, 216, 0.6)',
-                        borderColor: 'rgba(29, 78, 216, 1)',
                         type: 'scatter',
                         pointRadius: 5,
                     }, {
@@ -307,31 +291,9 @@
                 },
                 options: {
                     responsive: true,
-                    scales: {
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'زمان (روز)',
-                                font: { size: 14, family: 'Vazirmatn' }
-                            }
-                        },
-                        y: {
-                            title: {
-                                display: true,
-                                text: 'مقدار استخراج (کیلوگرم)',
-                                font: { size: 14, family: 'Vazirmatn' }
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            labels: {
-                                font: {
-                                    family: 'Vazirmatn'
-                                }
-                            }
-                        }
-                    }
+                    scales: { x: { title: { display: true, text: 'زمان (روز)', font: { size: 14, family: 'Vazirmatn' }}},
+                              y: { title: { display: true, text: 'مقدار استخراج (کیلوگرم)', font: { size: 14, family: 'Vazirmatn' }}}},
+                    plugins: { legend: { labels: { font: { family: 'Vazirmatn' }}}}
                 }
             });
         }
@@ -346,7 +308,7 @@
             const results = rawData.map(row => {
                 const t = row[document.getElementById('time-col').value];
                 const y_real = row[document.getElementById('data-col').value];
-                const y_pred = (t != null) ? modelFunc(t, fitParams) : null;
+                const y_pred = (t != null && !isNaN(t)) ? modelFunc(t, fitParams) : null;
                 return {
                     'زمان (روز)': t,
                     'تولید واقعی': y_real,
@@ -354,8 +316,7 @@
                 };
             });
 
-            // افزودن پیش‌بینی آینده
-            const predictDays = parseInt(document.getElementById('predict-days').value);
+            const predictDays = parseInt(document.getElementById('predict-days').value) || 30;
             for (let i = 1; i <= predictDays; i++) {
                 const futureDay = lastDay + i;
                 const futurePred = modelFunc(futureDay, fitParams);
