@@ -3,19 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تحلیل‌گر وب فرآیند لیچینگ</title>
+    <title>تحلیل‌گر لیچینگ (نسخه آفلاین)</title>
     
-    <!-- Tailwind CSS -->
+    <!-- Styling (These are not critical for functionality) -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- SheetJS (for reading/writing Excel files) -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-    
-    <!-- Chart.js (for plotting) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
-    <!-- Levenberg-Marquardt (for non-linear regression) - CDN CHANGED FOR RELIABILITY -->
-    <script src="https://unpkg.com/ml-levenberg-marquardt/dist/levenberg-marquardt.min.js"></script>
+    <!-- Data Export (Not critical for analysis) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
     <!-- Persian Font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -57,17 +52,9 @@
         .btn-secondary:hover {
             background-color: #15803d;
         }
-        .drop-zone {
-            border: 2px dashed #ccc;
-            border-radius: 12px;
-            padding: 40px;
-            text-align: center;
-            color: #666;
-            transition: all 0.3s;
-        }
-        .drop-zone.dragover {
-            border-color: #1d4ed8;
-            background-color: #eff6ff;
+        textarea {
+            resize: vertical;
+            min-height: 200px;
         }
         #loading-overlay {
             position: fixed;
@@ -75,10 +62,12 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.6);
+            background-color: rgba(0, 0, 0, 0.7);
             z-index: 9999;
             color: white;
-            font-size: 1.5rem;
+            font-size: 1.2rem;
+            text-align: center;
+            padding: 20px;
         }
     </style>
 </head>
@@ -87,35 +76,19 @@
     <div id="loading-overlay" class="hidden flex justify-center items-center">
         <p>در حال تحلیل، لطفاً شکیبا باشید...</p>
     </div>
-
+    
     <div class="max-w-4xl mx-auto">
         <header class="text-center mb-8">
             <h1 class="text-3xl md:text-4xl font-bold text-gray-800">تحلیل‌گر وب فرآیند لیچینگ</h1>
-            <p class="text-gray-600 mt-2">مدل‌سازی سینتیکی استخراج مس با رابط کاربری وب</p>
+            <p class="text-gray-600 mt-2">فقط مقادیر تولید را کپی و پیست کنید!</p>
         </header>
 
-        <!-- بخش تنظیمات و بارگذاری -->
+        <!-- بخش ورودی داده -->
         <div class="card">
-            <h2 class="text-2xl font-bold mb-4 border-b pb-2">۱. بارگذاری و تنظیمات</h2>
-            <div id="drop-zone" class="drop-zone">
-                <p>فایل اکسل خود را اینجا بکشید و رها کنید</p>
-                <p class="my-2">یا</p>
-                <input type="file" id="file-input" class="hidden">
-                <label for="file-input" class="btn btn-primary cursor-pointer">انتخاب فایل از دستگاه</label>
-            </div>
-            <p id="file-name" class="text-center mt-4 text-gray-700"></p>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-                <div>
-                    <label for="time-col" class="block font-bold text-gray-700 mb-1">نام ستون زمان (روز)</label>
-                    <input type="text" id="time-col" value="t" class="w-full p-2 border rounded-lg">
-                </div>
-                <div>
-                    <label for="data-col" class="block font-bold text-gray-700 mb-1">نام ستون تولید (واقعی)</label>
-                    <input type="text" id="data-col" value="واقعی" class="w-full p-2 border rounded-lg">
-                </div>
-            </div>
-            <button id="analyze-btn" class="btn btn-primary w-full mt-6">اجرای تحلیل و برازش مدل</button>
+            <h2 class="text-2xl font-bold mb-4 border-b pb-2">۱. ورود داده‌ها</h2>
+            <label for="data-input" class="block font-bold text-gray-700 mb-2">مقادیر تولید روزانه را اینجا کپی و جایگذاری کنید (هر عدد در یک خط جدا):</label>
+            <textarea id="data-input" class="w-full p-3 border rounded-lg" placeholder="820.5&#10;928.02&#10;685.66&#10;..."></textarea>
+            <button id="analyze-btn" class="btn btn-primary w-full mt-4">اجرای تحلیل و برازش مدل</button>
         </div>
 
         <!-- بخش نتایج -->
@@ -150,94 +123,154 @@
     </div>
 
     <script>
-        // --- تعریف متغیرهای سراسری ---
-        let rawData = null;
+        // --- START OF EMBEDDED Levenberg-Marquardt Library ---
+        // This code is a self-contained implementation of the LM algorithm.
+        // No external script loading is needed for this core functionality.
+        const LM = (function() {
+            function check(data, F, options) {
+                if (!data.x || !data.y) throw new Error('Data must be an object with x and y properties');
+                if (data.x.length !== data.y.length) throw new Error('x and y arrays must have the same length');
+                if (typeof F !== 'function') throw new Error('F must be a function');
+            }
+
+            function gradient(F, p, h) {
+                h = h || 1e-5;
+                const n = p.length;
+                const grad = new Array(n);
+                const p_h = p.slice();
+                for (let i = 0; i < n; i++) {
+                    p_h[i] += h;
+                    const f_p_h = F(p_h);
+                    p_h[i] -= h;
+                    const f_p = F(p);
+                    grad[i] = f_p_h.map((val, j) => (val - f_p[j]) / h);
+                }
+                return grad;
+            }
+
+            function levenbergMarquardt(data, F, options) {
+                check(data, F, options);
+                const { x, y } = data;
+                const {
+                    maxIterations = 100,
+                    initialValues = new Array(F.length).fill(1),
+                    damping = 0.001,
+                    gradientDifference = 1e-5,
+                    errorTolerance = 1e-7
+                } = options;
+
+                let p = initialValues.slice();
+                let err = y.map((val, i) => val - F(p)(x[i]));
+                let sse = err.reduce((a, b) => a + b * b, 0);
+
+                for (let iter = 0; iter < maxIterations; iter++) {
+                    const jacobian = gradient(p => x.map(F(p)), p, gradientDifference);
+                    const JT = jacobian[0].map((_, c) => jacobian.map(r => r[c]));
+                    const JTE = JT.map(row => row.reduce((sum, val, i) => sum + val * err[i], 0));
+                    const JTJ = JT.map(row => JT.map(col => row.reduce((sum, val, i) => sum + val * col[i], 0)));
+
+                    const n = p.length;
+                    const L = JTJ.map(row => row.slice());
+                    for (let i = 0; i < n; i++) L[i][i] += damping;
+
+                    try {
+                        const h = solve(L, JTE);
+                        const p_new = p.map((val, i) => val + h[i]);
+                        const err_new = y.map((val, i) => val - F(p_new)(x[i]));
+                        const sse_new = err_new.reduce((a, b) => a + b * b, 0);
+
+                        if (sse_new < sse) {
+                            p = p_new;
+                            err = err_new;
+                            sse = sse_new;
+                            damping /= 10;
+                        } else {
+                            damping *= 10;
+                        }
+                    } catch (e) {
+                        damping *= 10;
+                    }
+                    if (sse < errorTolerance) break;
+                }
+                return { parameterValues: p, error: sse };
+            }
+
+            function solve(A, b) {
+                const n = A.length;
+                for (let i = 0; i < n; i++) {
+                    let maxEl = Math.abs(A[i][i]);
+                    let maxRow = i;
+                    for (let k = i + 1; k < n; k++) {
+                        if (Math.abs(A[k][i]) > maxEl) {
+                            maxEl = Math.abs(A[k][i]);
+                            maxRow = k;
+                        }
+                    }
+                    for (let k = i; k < n; k++) {
+                        [A[maxRow][k], A[i][k]] = [A[i][k], A[maxRow][k]];
+                    }
+                    [b[maxRow], b[i]] = [b[i], b[maxRow]];
+                    for (let k = i + 1; k < n; k++) {
+                        const c = -A[k][i] / A[i][i];
+                        for (let j = i; j < n; j++) {
+                            if (i === j) A[k][j] = 0;
+                            else A[k][j] += c * A[i][j];
+                        }
+                        b[k] += c * b[i];
+                    }
+                }
+                const x = new Array(n);
+                for (let i = n - 1; i > -1; i--) {
+                    x[i] = b[i] / A[i][i];
+                    for (let k = i - 1; k > -1; k--) {
+                        b[k] -= A[k][i] * x[i];
+                    }
+                }
+                return x;
+            }
+            return levenbergMarquardt;
+        })();
+        // --- END OF EMBEDDED Library ---
+
+        // --- Application Logic ---
+        let processedData = null;
         let fitParams = null;
         let chartInstance = null;
-        let lastDay = 0;
 
-        // --- ارجاع به عناصر DOM ---
-        const dropZone = document.getElementById('drop-zone');
-        const fileInput = document.getElementById('file-input');
-        const fileNameDisplay = document.getElementById('file-name');
+        const dataInput = document.getElementById('data-input');
         const analyzeBtn = document.getElementById('analyze-btn');
         const exportBtn = document.getElementById('export-btn');
         const loadingOverlay = document.getElementById('loading-overlay');
 
-        // --- تعریف تابع مدل ---
         const modelFunc = (t, params) => {
             const [A, k, C] = params;
             return A * Math.exp(-k * t) + C;
         };
-
-        // --- مدیریت رویدادهای Drag & Drop ---
-        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
-        dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('dragover'); });
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('dragover');
-            const files = e.dataTransfer.files;
-            if (files.length) handleFile(files[0]);
-        });
-        fileInput.addEventListener('change', (e) => {
-            const files = e.target.files;
-            if (files.length) handleFile(files[0]);
-        });
-
-        // --- تابع پردازش فایل اکسل ---
-        function handleFile(file) {
-            fileNameDisplay.textContent = `فایل انتخاب شده: ${file.name}`;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const firstSheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[firstSheetName];
-                    rawData = XLSX.utils.sheet_to_json(worksheet);
-                    alert('فایل با موفقیت خوانده شد. لطفاً نام ستون‌ها را بررسی و دکمه تحلیل را بزنید.');
-                } catch (error) {
-                    alert(`خطا در خواندن فایل اکسل: ${error.message}`);
-                }
-            };
-            reader.readAsArrayBuffer(file);
-        }
         
-        // --- تابع اصلی تحلیل ---
         analyzeBtn.addEventListener('click', () => {
-            if (!rawData) {
-                alert('لطفاً ابتدا یک فایل اکسل را بارگذاری کنید.');
+            const inputText = dataInput.value.trim();
+            if (!inputText) {
+                alert('لطفاً ابتدا داده‌ها را در کادر مربوطه وارد کنید.');
                 return;
             }
-
+            
             loadingOverlay.classList.remove('hidden');
 
             setTimeout(() => {
                 try {
-                    // BUG FIX: Check if the LM library is loaded
-                    if (typeof LM === 'undefined' || typeof LM.default !== 'function') {
-                        throw new Error("کتابخانه تحلیل (LM) بارگذاری نشده یا نامعتبر است. لطفاً اتصال اینترنت خود را بررسی کرده و صفحه را دوباره بارگذاری کنید.");
+                    const yData = inputText.split('\n')
+                                         .map(line => parseFloat(line.trim()))
+                                         .filter(num => !isNaN(num));
+
+                    if (yData.length < 3) {
+                        throw new Error("برای تحلیل حداقل به ۳ نقطه داده معتبر نیاز است.");
                     }
+                    
+                    const tData = Array.from({ length: yData.length }, (_, i) => i + 1);
+                    
+                    processedData = { t: tData, y: yData };
 
-                    const timeCol = document.getElementById('time-col').value;
-                    const dataCol = document.getElementById('data-col').value;
-
-                    if (!rawData[0].hasOwnProperty(timeCol) || !rawData[0].hasOwnProperty(dataCol)) {
-                        throw new Error("نام ستون‌های وارد شده در فایل اکسل یافت نشد.");
-                    }
-
-                    const data = rawData.map(row => ({
-                        t: parseFloat(row[timeCol]),
-                        y: parseFloat(row[dataCol])
-                    })).filter(p => !isNaN(p.t) && !isNaN(p.y));
-
-                    const tData = data.map(p => p.t);
-                    const yData = data.map(p => p.y);
-                    lastDay = Math.max(...tData);
-
-                    // BUG FIX: Rewritten the fitting logic to match the current library API
                     const fnToFit = (params) => (t) => modelFunc(t, params);
-
                     const dataForFitting = { x: tData, y: yData };
                     const initialGuess = [Math.max(...yData), 0.1, Math.min(...yData)];
                     const options = {
@@ -246,7 +279,7 @@
                         maxIterations: 200,
                     };
                     
-                    const result = LM.default(dataForFitting, fnToFit, options);
+                    const result = LM(dataForFitting, fnToFit, options);
                     fitParams = result.parameterValues;
 
                     document.getElementById('param-A').textContent = fitParams[0].toFixed(2);
@@ -263,7 +296,6 @@
             }, 50);
         });
 
-        // --- تابع رسم نمودار ---
         function plotResults(tData, yData) {
             const ctx = document.getElementById('chart').getContext('2d');
             if (chartInstance) chartInstance.destroy();
@@ -298,25 +330,24 @@
             });
         }
 
-        // --- تابع خروجی اکسل ---
         exportBtn.addEventListener('click', () => {
-            if (!rawData || !fitParams) {
-                alert('لطفاً ابتدا داده‌ها را تحلیل کنید.');
+            if (!processedData || !fitParams) {
+                alert('لطفاً ابتدا داده‌ها را وارد و تحلیل کنید.');
                 return;
             }
 
-            const results = rawData.map(row => {
-                const t = row[document.getElementById('time-col').value];
-                const y_real = row[document.getElementById('data-col').value];
-                const y_pred = (t != null && !isNaN(t)) ? modelFunc(t, fitParams) : null;
+            const results = processedData.t.map((t, i) => {
+                const y_real = processedData.y[i];
+                const y_pred = modelFunc(t, fitParams);
                 return {
                     'زمان (روز)': t,
                     'تولید واقعی': y_real,
-                    'تولید پیش‌بینی شده (مدل)': y_pred ? y_pred.toFixed(2) : ''
+                    'تولید پیش‌بینی شده (مدل)': y_pred.toFixed(2)
                 };
             });
 
             const predictDays = parseInt(document.getElementById('predict-days').value) || 30;
+            const lastDay = processedData.t[processedData.t.length - 1];
             for (let i = 1; i <= predictDays; i++) {
                 const futureDay = lastDay + i;
                 const futurePred = modelFunc(futureDay, fitParams);
