@@ -3,408 +3,386 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تحلیل غربال برای هیپ‌لیچینگ</title>
+    <title>تحلیل‌گر وب فرآیند لیچینگ</title>
+    
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- SheetJS (for reading/writing Excel files) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    
+    <!-- Chart.js (for plotting) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <!-- Levenberg-Marquardt (for non-linear regression) -->
+    <script src="https://cdn.jsdelivr.net/npm/ml-levenberg-marquardt/dist/levenberg-marquardt.min.js"></script>
+
+    <!-- Persian Font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+
     <style>
         body {
             font-family: 'Vazirmatn', sans-serif;
+            background-color: #f0f2f5;
         }
-        .modal {
-            display: none; /* Hidden by default */
+        .card {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 24px;
+            margin-bottom: 20px;
         }
-        .modal.active {
-            display: flex; /* Show when active */
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: bold;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background-color: #1d4ed8;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #1e40af;
+        }
+        .btn-secondary {
+            background-color: #16a34a;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #15803d;
+        }
+        .drop-zone {
+            border: 2px dashed #ccc;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            color: #666;
+            transition: all 0.3s;
+        }
+        .drop-zone.dragover {
+            border-color: #1d4ed8;
+            background-color: #eff6ff;
+        }
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 1.5rem;
         }
     </style>
 </head>
-<body class="bg-gray-100">
+<body class="p-4 md:p-8">
 
-    <div class="container mx-auto p-4 md:p-8">
+    <div id="loading-overlay" class="hidden">
+        <p>در حال تحلیل، لطفاً شکیبا باشید...</p>
+    </div>
+
+    <div class="max-w-4xl mx-auto">
         <header class="text-center mb-8">
-            <h1 class="text-3xl md:text-4xl font-bold text-gray-800">تحلیل غربال برای هیپ‌لیچینگ مس اکسیدی</h1>
-            <p class="text-gray-600 mt-2">ورودی‌ها را بر حسب گرم وارد کرده و نتایج را مشاهده کنید</p>
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800">تحلیل‌گر وب فرآیند لیچینگ</h1>
+            <p class="text-gray-600 mt-2">مدل‌سازی سینتیکی استخراج مس با رابط کاربری وب</p>
         </header>
 
-        <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Inputs and Controls Column -->
-            <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg">
-                <h2 class="text-2xl font-semibold text-gray-700 border-b-2 border-cyan-500 pb-3 mb-6">ورود داده‌ها</h2>
-                <div id="sieve-inputs" class="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-                    <!-- Sieve inputs will be dynamically generated here -->
+        <!-- بخش تنظیمات و بارگذاری -->
+        <div class="card">
+            <h2 class="text-2xl font-bold mb-4 border-b pb-2">۱. بارگذاری و تنظیمات</h2>
+            <div id="drop-zone" class="drop-zone">
+                <p>فایل اکسل خود را اینجا بکشید و رها کنید</p>
+                <p class="my-2">یا</p>
+                <input type="file" id="file-input" class="hidden">
+                <label for="file-input" class="btn btn-primary cursor-pointer">انتخاب فایل از دستگاه</label>
+            </div>
+            <p id="file-name" class="text-center mt-4 text-gray-700"></p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                <div>
+                    <label for="time-col" class="block font-bold text-gray-700 mb-1">نام ستون زمان (روز)</label>
+                    <input type="text" id="time-col" value="t" class="w-full p-2 border rounded-lg">
                 </div>
-                <div class="grid grid-cols-2 gap-4 mt-8">
-                    <button id="calculate-btn" class="w-full bg-cyan-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-cyan-700 transition-colors shadow-md">محاسبه</button>
-                    <button id="reset-btn" class="w-full bg-red-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-red-600 transition-colors shadow-md">ریست</button>
-                    <button id="manage-sieves-btn" class="w-full col-span-2 bg-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-700 transition-colors shadow-md">تنظیم سرندها</button>
-                    <button id="export-btn" class="w-full col-span-2 bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 transition-colors shadow-md disabled:bg-gray-400" disabled>خروجی اکسل</button>
+                <div>
+                    <label for="data-col" class="block font-bold text-gray-700 mb-1">نام ستون تولید (واقعی)</label>
+                    <input type="text" id="data-col" value="واقعی" class="w-full p-2 border rounded-lg">
                 </div>
             </div>
+            <button id="analyze-btn" class="btn btn-primary w-full mt-6">اجرای تحلیل و برازش مدل</button>
+        </div>
 
-            <!-- Results and Charts Column -->
-            <div id="results-container" class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg hidden">
-                 <h2 class="text-2xl font-semibold text-gray-700 border-b-2 border-teal-500 pb-3 mb-6">نتایج تحلیل</h2>
-                
-                <!-- Summary Stats -->
-                <div id="summary-stats" class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center mb-8">
-                    <!-- Summary data will be injected here -->
-                </div>
-
-                <!-- Charts -->
-                <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                    <div>
-                        <h3 class="text-xl font-semibold text-gray-700 mb-4 text-center">نمودار تجمعی عبوری</h3>
-                        <canvas id="passing-chart"></canvas>
-                        <p class="text-center text-sm text-gray-500 mt-2">اندازه سرند (میکرون) - مقیاس لگاریتمی</p>
-                    </div>
-                    <div>
-                        <h3 class="text-xl font-semibold text-gray-700 mb-4 text-center">هیستوگرام توزیع وزن</h3>
-                        <canvas id="weight-chart"></canvas>
-                    </div>
+        <!-- بخش نتایج -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="card">
+                <h2 class="text-2xl font-bold mb-4 border-b pb-2">۲. پارامترهای مدل</h2>
+                <div class="space-y-3 text-lg">
+                    <p><strong>A = </strong><span id="param-A">--</span></p>
+                    <p><strong>k = </strong><span id="param-k">--</span></p>
+                    <p><strong>C = </strong><span id="param-C">--</span></p>
                 </div>
             </div>
-             <div id="welcome-container" class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg flex items-center justify-center">
-                <p class="text-gray-500 text-xl">نتایج تحلیل پس از محاسبه در اینجا نمایش داده می‌شوند.</p>
-            </div>
-        </main>
-    </div>
-
-    <!-- Sieve Management Modal -->
-    <div id="sieve-modal" class="modal fixed inset-0 bg-black bg-opacity-50 items-center justify-center p-4">
-        <div class="bg-white rounded-lg shadow-2xl p-6 w-full max-w-md">
-            <h2 class="text-2xl font-bold mb-4">مدیریت سرندها</h2>
-            <div id="modal-sieve-list" class="max-h-60 overflow-y-auto border rounded-lg p-2 mb-4">
-                <!-- List of current sieves -->
-            </div>
-            <div class="border-t pt-4">
-                <h3 class="text-lg font-semibold mb-2">افزودن سرند جدید</h3>
-                <input id="new-sieve-label" type="text" placeholder="نام سرند (مثال: 40 مش)" class="w-full p-2 border rounded mb-2">
-                <input id="new-sieve-size" type="number" placeholder="اندازه (میکرون) - برای سینی خالی بگذارید" class="w-full p-2 border rounded mb-4">
-                <div class="flex justify-between gap-4">
-                    <button id="add-sieve-btn" class="bg-blue-500 text-white px-4 py-2 rounded-lg flex-grow">افزودن</button>
-                    <button id="close-modal-btn" class="bg-gray-500 text-white px-4 py-2 rounded-lg flex-grow">بستن</button>
+            <div class="card">
+                <h2 class="text-2xl font-bold mb-4 border-b pb-2">۳. پیش‌بینی و خروجی</h2>
+                <div>
+                    <label for="predict-days" class="block font-bold text-gray-700 mb-1">تعداد روز برای پیش‌بینی</label>
+                    <input type="number" id="predict-days" value="30" class="w-full p-2 border rounded-lg">
                 </div>
+                <button id="export-btn" class="btn btn-secondary w-full mt-6">ذخیره نتایج در اکسل</button>
             </div>
         </div>
+
+        <!-- بخش نمودار -->
+        <div class="card">
+            <h2 class="text-2xl font-bold mb-4 border-b pb-2">۴. نمودار نتایج</h2>
+            <canvas id="chart"></canvas>
+        </div>
+        
+        <footer class="text-center mt-8 text-gray-500">
+            <p>توسعه‌یافته با هوش مصنوعی گوگل</p>
+        </footer>
     </div>
 
-
     <script>
-        // --- INITIAL DATA ---
-        let sieves = [
-            { label: 'سرند 15', size: 150000 }, { label: '10 سانت', size: 100000 },
-            { label: '7.5 سانت', size: 75000 }, { label: '2 اینچ', size: 50800 },
-            { label: '1اینچ', size: 25400 }, { label: '3/4 اینچ', size: 19000 },
-            { label: '1/2 اینچ', size: 12700 }, { label: '4 مش', size: 4760 },
-            { label: '8 مش', size: 2380 }, { label: '16 مش', size: 1190 },
-            { label: '30 مش', size: 595 }, { label: '100 مش', size: 149 },
-            { label: 'سینی', size: null },
-        ];
+        // --- تعریف متغیرهای سراسری ---
+        let rawData = null;
+        let fitParams = null;
+        let chartInstance = null;
+        let lastDay = 0;
 
-        const TARGET_VALUES = { d10: 10, d30: 30, d50: 50, d60: 60, d80: 80 };
-        let latestAnalysis = null;
-        let passingChartInstance = null;
-        let weightChartInstance = null;
-
-        // --- DOM ELEMENTS ---
-        const sieveInputsContainer = document.getElementById('sieve-inputs');
-        const calculateBtn = document.getElementById('calculate-btn');
-        const resetBtn = document.getElementById('reset-btn');
+        // --- ارجاع به عناصر DOM ---
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const fileNameDisplay = document.getElementById('file-name');
+        const analyzeBtn = document.getElementById('analyze-btn');
         const exportBtn = document.getElementById('export-btn');
-        const resultsContainer = document.getElementById('results-container');
-        const welcomeContainer = document.getElementById('welcome-container');
-        const summaryStatsContainer = document.getElementById('summary-stats');
-        
-        // Modal elements
-        const manageSievesBtn = document.getElementById('manage-sieves-btn');
-        const sieveModal = document.getElementById('sieve-modal');
-        const closeModalBtn = document.getElementById('close-modal-btn');
-        const addSieveBtn = document.getElementById('add-sieve-btn');
-        const modalSieveList = document.getElementById('modal-sieve-list');
-        const newSieveLabelInput = document.getElementById('new-sieve-label');
-        const newSieveSizeInput = document.getElementById('new-sieve-size');
+        const loadingOverlay = document.getElementById('loading-overlay');
 
-        // --- UI RENDERING ---
-        function renderSieveInputs() {
-            sieveInputsContainer.innerHTML = '';
-            sieves.sort((a, b) => (b.size ?? -1) - (a.size ?? -1));
-            sieves.forEach(sieve => {
-                const div = document.createElement('div');
-                div.className = 'flex items-center gap-4';
-                const label = document.createElement('label');
-                label.className = 'w-2/3 text-right text-gray-700';
-                label.textContent = `${sieve.label} (${sieve.size ?? 'سینی'} µm):`;
-                label.htmlFor = `sieve-${sieve.label}`;
-                
-                const input = document.createElement('input');
-                input.type = 'number';
-                input.id = `sieve-${sieve.label}`;
-                input.className = 'w-1/3 p-2 border rounded-md text-left focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500';
-                input.placeholder = '0.0';
-                input.value = '0';
+        // --- تعریف تابع مدل ---
+        const modelFunc = (t, params) => {
+            const [A, k, C] = params;
+            return A * Math.exp(-k * t) + C;
+        };
 
-                div.appendChild(label);
-                div.appendChild(input);
-                sieveInputsContainer.appendChild(div);
-            });
-        }
-
-        // --- CALCULATION LOGIC ---
-        function getFloat(value) {
-            const num = parseFloat(value);
-            return isNaN(num) ? 0.0 : num;
-        }
-
-        function linearInterpolation(target, points) {
-            if (!points || points.length === 0) return null;
-            points.sort((a,b) => b[0] - a[0]); // Sort by passing percent descending
-            if (target >= points[0][0]) return points[0][1];
-            if (target <= points[points.length - 1][0]) return points[points.length - 1][1];
-
-            for (let i = 0; i < points.length - 1; i++) {
-                const [p_high, d_high] = points[i];
-                const [p_low, d_low] = points[i + 1];
-                if (p_high >= target && target >= p_low) {
-                    if (p_high - p_low === 0) return d_high;
-                    const fraction = (p_high - target) / (p_high - p_low);
-                    return d_high + (d_low - d_high) * fraction;
-                }
+        // --- مدیریت رویدادهای Drag & Drop ---
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length) {
+                handleFile(files[0]);
             }
-            return null;
+        });
+        fileInput.addEventListener('change', (e) => {
+            const files = e.target.files;
+            if (files.length) {
+                handleFile(files[0]);
+            }
+        });
+
+        // --- تابع پردازش فایل اکسل ---
+        function handleFile(file) {
+            fileNameDisplay.textContent = `فایل انتخاب شده: ${file.name}`;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                rawData = XLSX.utils.sheet_to_json(worksheet);
+                alert('فایل با موفقیت خوانده شد. لطفاً نام ستون‌ها را بررسی و دکمه تحلیل را بزنید.');
+            };
+            reader.readAsArrayBuffer(file);
         }
-
-        function performAnalysis() {
-            const weights = sieves.map(sieve => getFloat(document.getElementById(`sieve-${sieve.label}`).value));
-            const totalWeight = weights.reduce((sum, w) => sum + w, 0);
-
-            if (totalWeight === 0) {
-                alert('مجموع وزن‌ها نمی‌تواند صفر باشد.');
+        
+        // --- تابع اصلی تحلیل ---
+        analyzeBtn.addEventListener('click', () => {
+            if (!rawData) {
+                alert('لطفاً ابتدا یک فایل اکسل را بارگذاری کنید.');
                 return;
             }
 
-            const percents = weights.map(w => (w / totalWeight) * 100);
-            const cumRetained = [];
-            let cum = 0.0;
-            percents.forEach(p => {
-                cum += p;
-                cumRetained.push(cum);
-            });
-            const percentPassing = cumRetained.map(cr => 100 - cr);
+            loadingOverlay.classList.remove('hidden');
 
-            const interpPoints = [];
-            sieves.forEach((sieve, i) => {
-                if (sieve.size !== null) {
-                    interpPoints.push([percentPassing[i], sieve.size]);
+            // استفاده از setTimeout برای نمایش لودینگ قبل از شروع محاسبات سنگین
+            setTimeout(() => {
+                try {
+                    const timeCol = document.getElementById('time-col').value;
+                    const dataCol = document.getElementById('data-col').value;
+
+                    if (!rawData[0].hasOwnProperty(timeCol) || !rawData[0].hasOwnProperty(dataCol)) {
+                        throw new Error("نام ستون‌های وارد شده در فایل اکسل یافت نشد.");
+                    }
+
+                    const data = rawData.map(row => ({
+                        t: row[timeCol],
+                        y: row[dataCol]
+                    })).filter(p => p.t != null && p.y != null);
+
+                    const tData = data.map(p => p.t);
+                    const yData = data.map(p => p.y);
+                    lastDay = Math.max(...tData);
+
+                    // تعریف تابع برای بهینه‌سازی (Levenberg-Marquardt)
+                    const fnToOptimize = (params) => {
+                        const [A, k, C] = params;
+                        return tData.map(t => A * Math.exp(-k * t) + C);
+                    };
+
+                    // مقادیر اولیه برای پارامترها
+                    const initialGuess = [Math.max(...yData), 0.1, Math.min(...yData)];
+                    
+                    const options = {
+                        damping: 1.5,
+                        initialValues: initialGuess,
+                        gradientDifference: 10e-2,
+                        maxIterations: 100,
+                        errorTolerance: 10e-3,
+                    };
+                    
+                    // اجرای بهینه‌سازی
+                    const lm = new LM.default({ fn: fnToOptimize }, yData, options);
+                    lm.run();
+                    fitParams = lm.predict.solution;
+
+                    // نمایش نتایج
+                    document.getElementById('param-A').textContent = fitParams[0].toFixed(2);
+                    document.getElementById('param-k').textContent = fitParams[1].toFixed(3);
+                    document.getElementById('param-C').textContent = fitParams[2].toFixed(2);
+
+                    plotResults(tData, yData);
+
+                } catch (error) {
+                    alert(`خطا در هنگام تحلیل: ${error.message}`);
+                } finally {
+                    loadingOverlay.classList.add('hidden');
                 }
-            });
+            }, 50);
+        });
 
-            const dValues = {};
-            for (const key in TARGET_VALUES) {
-                dValues[key] = linearInterpolation(TARGET_VALUES[key], interpPoints);
-            }
-
-            let Cu = null;
-            if (dValues.d10 && dValues.d10 > 0 && dValues.d60) {
-                Cu = dValues.d60 / dValues.d10;
-            }
-
-            let Cc = null;
-            if (dValues.d10 && dValues.d60 && dValues.d30 && dValues.d10 > 0 && dValues.d60 > 0) {
-                Cc = Math.pow(dValues.d30, 2) / (dValues.d10 * dValues.d60);
-            }
-
-            latestAnalysis = {
-                weights, percents, cumRetained, percentPassing, dValues, Cu, Cc, totalWeight
-            };
+        // --- تابع رسم نمودار ---
+        function plotResults(tData, yData) {
+            const ctx = document.getElementById('chart').getContext('2d');
             
-            displayResults();
-            exportBtn.disabled = false;
-        }
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
 
-        function displayResults() {
-            welcomeContainer.classList.add('hidden');
-            resultsContainer.classList.remove('hidden');
+            const fittedData = tData.map(t => modelFunc(t, fitParams));
 
-            // **FIX**: Added d50 and d80 to the display grid
-            summaryStatsContainer.innerHTML = `
-                <div class="bg-gray-100 p-3 rounded-lg"><p class="text-sm text-gray-500">D10</p><p class="text-xl font-bold text-gray-800">${latestAnalysis.dValues.d10?.toFixed(2) ?? 'N/A'}</p></div>
-                <div class="bg-gray-100 p-3 rounded-lg"><p class="text-sm text-gray-500">D30</p><p class="text-xl font-bold text-gray-800">${latestAnalysis.dValues.d30?.toFixed(2) ?? 'N/A'}</p></div>
-                <div class="bg-gray-100 p-3 rounded-lg"><p class="text-sm text-gray-500">D50</p><p class="text-xl font-bold text-gray-800">${latestAnalysis.dValues.d50?.toFixed(2) ?? 'N/A'}</p></div>
-                <div class="bg-gray-100 p-3 rounded-lg"><p class="text-sm text-gray-500">D60</p><p class="text-xl font-bold text-gray-800">${latestAnalysis.dValues.d60?.toFixed(2) ?? 'N/A'}</p></div>
-                <div class="bg-gray-100 p-3 rounded-lg"><p class="text-sm text-gray-500">D80</p><p class="text-xl font-bold text-gray-800">${latestAnalysis.dValues.d80?.toFixed(2) ?? 'N/A'}</p></div>
-                <div class="bg-gray-100 p-3 rounded-lg"><p class="text-sm text-gray-500">Cu</p><p class="text-xl font-bold text-gray-800">${latestAnalysis.Cu?.toFixed(2) ?? 'N/A'}</p></div>
-                <div class="bg-gray-100 p-3 rounded-lg"><p class="text-sm text-gray-500">Cc</p><p class="text-xl font-bold text-gray-800">${latestAnalysis.Cc?.toFixed(2) ?? 'N/A'}</p></div>
-                <div class="bg-gray-100 p-3 rounded-lg"><p class="text-sm text-gray-500">Total Weight</p><p class="text-xl font-bold text-gray-800">${latestAnalysis.totalWeight?.toFixed(2) ?? 'N/A'} g</p></div>
-            `;
-            
-            updateCharts();
-        }
-
-        function updateCharts() {
-            // Passing Chart
-            const passingCtx = document.getElementById('passing-chart').getContext('2d');
-            const passingData = sieves
-                .map((s, i) => ({ x: s.size, y: latestAnalysis.percentPassing[i] }))
-                .filter(d => d.x !== null)
-                .sort((a,b) => a.x - b.x);
-
-            if (passingChartInstance) passingChartInstance.destroy();
-            passingChartInstance = new Chart(passingCtx, {
-                type: 'line',
+            chartInstance = new Chart(ctx, {
+                type: 'scatter',
                 data: {
                     datasets: [{
-                        label: 'درصد عبوری',
-                        data: passingData,
-                        borderColor: 'rgb(22, 163, 74)',
-                        backgroundColor: 'rgba(22, 163, 74, 0.2)',
-                        fill: true,
-                        tension: 0.1
+                        label: 'داده‌های واقعی',
+                        data: tData.map((t, i) => ({ x: t, y: yData[i] })),
+                        backgroundColor: 'rgba(29, 78, 216, 0.6)',
+                        borderColor: 'rgba(29, 78, 216, 1)',
+                        type: 'scatter',
+                        pointRadius: 5,
+                    }, {
+                        label: 'مدل برازش شده',
+                        data: tData.map((t, i) => ({ x: t, y: fittedData[i] })),
+                        borderColor: 'rgba(217, 70, 239, 1)',
+                        backgroundColor: 'transparent',
+                        type: 'line',
+                        borderWidth: 3,
+                        pointRadius: 0,
                     }]
                 },
                 options: {
                     responsive: true,
                     scales: {
-                        x: { type: 'logarithmic', title: { display: false } },
-                        y: { beginAtZero: true, max: 100, title: { display: true, text: 'درصد عبوری (%)' } }
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'زمان (روز)',
+                                font: { size: 14, family: 'Vazirmatn' }
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'مقدار استخراج (کیلوگرم)',
+                                font: { size: 14, family: 'Vazirmatn' }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                font: {
+                                    family: 'Vazirmatn'
+                                }
+                            }
+                        }
                     }
                 }
             });
-
-            // Weight Chart
-            const weightCtx = document.getElementById('weight-chart').getContext('2d');
-            const weightData = sieves.filter(s => s.size !== null);
-            if (weightChartInstance) weightChartInstance.destroy();
-            weightChartInstance = new Chart(weightCtx, {
-                type: 'bar',
-                data: {
-                    labels: weightData.map(s => s.label),
-                    datasets: [{
-                        label: 'وزن باقی‌مانده (گرم)',
-                        data: latestAnalysis.weights.slice(0, weightData.length),
-                        backgroundColor: 'rgba(59, 130, 246, 0.6)',
-                        borderColor: 'rgb(59, 130, 246)',
-                        borderWidth: 1
-                    }]
-                },
-                options: { responsive: true, scales: { y: { beginAtZero: true } } }
-            });
-        }
-        
-        function resetProgram() {
-            renderSieveInputs(); // This will reset inputs to 0
-            latestAnalysis = null;
-            resultsContainer.classList.add('hidden');
-            welcomeContainer.classList.remove('hidden');
-            exportBtn.disabled = true;
-            if (passingChartInstance) passingChartInstance.destroy();
-            if (weightChartInstance) weightChartInstance.destroy();
         }
 
-        // --- EXCEL EXPORT ---
-        function exportToExcel() {
-            if (!latestAnalysis) {
-                alert('ابتدا تحلیل را انجام دهید.');
+        // --- تابع خروجی اکسل ---
+        exportBtn.addEventListener('click', () => {
+            if (!rawData || !fitParams) {
+                alert('لطفاً ابتدا داده‌ها را تحلیل کنید.');
                 return;
             }
-            // **FIX**: Added d50 and d80 to the export data
-            const rawData = sieves.map((sieve, i) => ({
-                'سرند': sieve.label,
-                'اندازه (میکرون)': sieve.size ?? '',
-                'وزن (گرم)': latestAnalysis.weights[i],
-                'درصد نگه‌داری': latestAnalysis.percents[i],
-                'درصد تجمعی نگه‌داری': latestAnalysis.cumRetained[i],
-                'درصد عبوری': latestAnalysis.percentPassing[i],
-            }));
-            const summaryData = [
-                { 'پارامتر': 'd10', 'مقدار': latestAnalysis.dValues.d10 },
-                { 'پارامتر': 'd30', 'مقدار': latestAnalysis.dValues.d30 },
-                { 'پارامتر': 'd50', 'مقدار': latestAnalysis.dValues.d50 },
-                { 'پارامتر': 'd60', 'مقدار': latestAnalysis.dValues.d60 },
-                { 'پارامتر': 'd80', 'مقدار': latestAnalysis.dValues.d80 },
-                { 'پارامتر': 'Cu', 'مقدار': latestAnalysis.Cu },
-                { 'پارامتر': 'Cc', 'مقدار': latestAnalysis.Cc },
+
+            const results = rawData.map(row => {
+                const t = row[document.getElementById('time-col').value];
+                const y_real = row[document.getElementById('data-col').value];
+                const y_pred = (t != null) ? modelFunc(t, fitParams) : null;
+                return {
+                    'زمان (روز)': t,
+                    'تولید واقعی': y_real,
+                    'تولید پیش‌بینی شده (مدل)': y_pred ? y_pred.toFixed(2) : ''
+                };
+            });
+
+            // افزودن پیش‌بینی آینده
+            const predictDays = parseInt(document.getElementById('predict-days').value);
+            for (let i = 1; i <= predictDays; i++) {
+                const futureDay = lastDay + i;
+                const futurePred = modelFunc(futureDay, fitParams);
+                results.push({
+                    'زمان (روز)': futureDay,
+                    'تولید واقعی': '',
+                    'تولید پیش‌بینی شده (مدل)': futurePred.toFixed(2)
+                });
+            }
+
+            const params = [
+                { 'پارامتر': 'A', 'مقدار': fitParams[0].toFixed(2) },
+                { 'پارامتر': 'k', 'مقدار': fitParams[1].toFixed(3) },
+                { 'پارامتر': 'C', 'مقدار': fitParams[2].toFixed(2) }
             ];
+
             const wb = XLSX.utils.book_new();
-            const wsRaw = XLSX.utils.json_to_sheet(rawData);
-            const wsSummary = XLSX.utils.json_to_sheet(summaryData);
-            XLSX.utils.book_append_sheet(wb, wsRaw, 'Raw Data');
-            XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+            const ws_results = XLSX.utils.json_to_sheet(results);
+            const ws_params = XLSX.utils.json_to_sheet(params);
 
-            // **FIX**: Changed export method for better mobile compatibility
-            const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-            const blob = new Blob([wbout], { type: 'application/octet-stream' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = 'SieveAnalysisResults.xlsx';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
+            XLSX.utils.book_append_sheet(wb, ws_results, 'نتایج و پیش‌بینی');
+            XLSX.utils.book_append_sheet(wb, ws_params, 'پارامترهای مدل');
 
-        // --- MODAL LOGIC ---
-        function renderModalSieveList() {
-            modalSieveList.innerHTML = '';
-            sieves.forEach(sieve => {
-                const row = document.createElement('div');
-                row.className = 'flex justify-between items-center p-2 border-b';
-                row.innerHTML = `<span>${sieve.label} (${sieve.size ?? 'سینی'} µm)</span>`;
-                if (sieve.label !== 'سینی') {
-                    const removeBtn = document.createElement('button');
-                    removeBtn.textContent = 'حذف';
-                    removeBtn.className = 'text-red-500 hover:text-red-700 font-semibold';
-                    removeBtn.onclick = () => {
-                        sieves = sieves.filter(s => s.label !== sieve.label);
-                        renderModalSieveList();
-                        renderSieveInputs();
-                    };
-                    row.appendChild(removeBtn);
-                }
-                modalSieveList.appendChild(row);
-            });
-        }
-        
-        manageSievesBtn.addEventListener('click', () => {
-            renderModalSieveList();
-            sieveModal.classList.add('active');
+            XLSX.writeFile(wb, 'نتایج_تحلیل_لیچینگ.xlsx');
         });
-
-        closeModalBtn.addEventListener('click', () => {
-            sieveModal.classList.remove('active');
-        });
-        
-        addSieveBtn.addEventListener('click', () => {
-            const label = newSieveLabelInput.value.trim();
-            const size = newSieveSizeInput.value.trim();
-            if (!label) {
-                alert('لطفاً نام سرند را وارد کنید.');
-                return;
-            }
-            const sizeValue = size === '' ? null : getFloat(size);
-            if (sieves.find(s => s.label === label)) {
-                alert('سرندی با این نام از قبل وجود دارد.');
-                return;
-            }
-            sieves.push({ label, size: sizeValue });
-            newSieveLabelInput.value = '';
-            newSieveSizeInput.value = '';
-            renderModalSieveList();
-            renderSieveInputs();
-        });
-
-        // --- EVENT LISTENERS ---
-        calculateBtn.addEventListener('click', performAnalysis);
-        resetBtn.addEventListener('click', resetProgram);
-        exportBtn.addEventListener('click', exportToExcel);
-
-        // --- INITIALIZE ---
-        window.onload = () => {
-            renderSieveInputs();
-        };
     </script>
-
 </body>
 </html>
+
