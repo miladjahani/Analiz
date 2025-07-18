@@ -3,377 +3,391 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تحلیل‌گر لیچینگ (نسخه آفلاین)</title>
+    <title>ابزار تحلیل و پیش‌بینی سینتیک هیپ لیچینگ</title>
     
-    <!-- Styling (These are not critical for functionality) -->
+    <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js for graphing -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
-    <!-- Data Export (Not critical for analysis) -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-
-    <!-- Persian Font -->
+    <!-- Custom Font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
-
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
         body {
             font-family: 'Vazirmatn', sans-serif;
-            background-color: #f0f2f5;
+            background-color: #111827; /* Dark background */
+            color: #e5e7eb; /* Light text */
         }
         .card {
-            background-color: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            padding: 24px;
-            margin-bottom: 20px;
-        }
-        .btn {
-            display: inline-block;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-weight: bold;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
+            background-color: #1f2937;
+            border: 1px solid #374151;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
         }
         .btn-primary {
-            background-color: #1d4ed8;
+            background-color: #3b82f6;
             color: white;
+            font-weight: 600;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            transition: background-color 0.3s;
         }
         .btn-primary:hover {
-            background-color: #1e40af;
+            background-color: #2563eb;
         }
-        .btn-secondary {
-            background-color: #16a34a;
-            color: white;
+        textarea, input {
+            background-color: #374151;
+            border: 1px solid #4b5563;
+            color: #e5e7eb;
+            border-radius: 0.5rem;
         }
-        .btn-secondary:hover {
-            background-color: #15803d;
+        textarea:focus, input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px #1d4ed8;
         }
-        textarea {
-            resize: vertical;
-            min-height: 200px;
-        }
-        #loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            z-index: 9999;
-            color: white;
-            font-size: 1.2rem;
-            text-align: center;
-            padding: 20px;
+        .result-value {
+            color: #34d399; /* Green for positive results */
+            font-weight: 700;
+            font-size: 1.25rem;
         }
     </style>
 </head>
 <body class="p-4 md:p-8">
-
-    <div id="loading-overlay" class="hidden flex justify-center items-center">
-        <p>در حال تحلیل، لطفاً شکیبا باشید...</p>
-    </div>
-    
-    <div class="max-w-4xl mx-auto">
+    <div class="max-w-7xl mx-auto">
         <header class="text-center mb-8">
-            <h1 class="text-3xl md:text-4xl font-bold text-gray-800">تحلیل‌گر وب فرآیند لیچینگ</h1>
-            <p class="text-gray-600 mt-2">فقط مقادیر تولید را کپی و پیست کنید!</p>
+            <h1 class="text-3xl md:text-4xl font-bold text-white">ابزار تحلیل و پیش‌بینی سینتیک هیپ لیچینگ</h1>
+            <p class="text-lg text-gray-400 mt-2">مدل بهینه را پیدا کنید و عملکرد هیپ‌های آینده را پیش‌بینی نمایید.</p>
         </header>
 
-        <!-- بخش ورودی داده -->
-        <div class="card">
-            <h2 class="text-2xl font-bold mb-4 border-b pb-2">۱. ورود داده‌ها</h2>
-            <label for="data-input" class="block font-bold text-gray-700 mb-2">مقادیر تولید روزانه را اینجا کپی و جایگذاری کنید (هر عدد در یک خط جدا):</label>
-            <textarea id="data-input" class="w-full p-3 border rounded-lg" placeholder="820.5&#10;928.02&#10;685.66&#10;..."></textarea>
-            <button id="analyze-btn" class="btn btn-primary w-full mt-4">اجرای تحلیل و برازش مدل</button>
-        </div>
+        <main class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Left Column: Input and Controls -->
+            <div class="flex flex-col gap-8">
+                <div class="card">
+                    <h2 class="text-2xl font-semibold mb-4 border-b border-gray-600 pb-2">۱. ورود داده‌ها</h2>
+                    <label for="recoveryData" class="block mb-2 font-medium text-gray-300">داده‌های ریکاوری تجمعی (%) را اینجا کپی کنید. هر عدد در یک خط جدید.</label>
+                    <textarea id="recoveryData" rows="10" class="w-full p-2 text-left" dir="ltr" placeholder="8.5&#10;15.2&#10;23.1&#10;..."></textarea>
+                    <button id="analyzeBtn" class="btn-primary w-full mt-4">شروع تحلیل و ساخت مدل</button>
+                </div>
 
-        <!-- بخش نتایج -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="card">
-                <h2 class="text-2xl font-bold mb-4 border-b pb-2">۲. پارامترهای مدل</h2>
-                <div class="space-y-3 text-lg">
-                    <p><strong>A = </strong><span id="param-A">--</span></p>
-                    <p><strong>k = </strong><span id="param-k">--</span></p>
-                    <p><strong>C = </strong><span id="param-C">--</span></p>
+                <div class="card" id="prediction-card" style="display: none;">
+                    <h2 class="text-2xl font-semibold mb-4 border-b border-gray-600 pb-2">۳. ابزار پیش‌بینی</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Predict Time -->
+                        <div>
+                            <label for="targetRecovery" class="block mb-2 font-medium">پیش‌بینی زمان برای ریکاوری مشخص:</label>
+                            <div class="flex items-center gap-2">
+                                <input type="number" id="targetRecovery" class="w-full p-2" placeholder="مثلاً: 85">
+                                <span class="text-gray-400">%</span>
+                            </div>
+                            <button id="predictTimeBtn" class="btn-primary w-full mt-2 text-sm">محاسبه زمان</button>
+                            <p id="timeResult" class="mt-2 text-center font-bold text-lg"></p>
+                        </div>
+                        <!-- Predict Recovery -->
+                        <div>
+                            <label for="targetTime" class="block mb-2 font-medium">پیش‌بینی ریکاوری در زمان مشخص:</label>
+                            <div class="flex items-center gap-2">
+                                <input type="number" id="targetTime" class="w-full p-2" placeholder="مثلاً: 150">
+                                <span class="text-gray-400">روز</span>
+                            </div>
+                            <button id="predictRecoveryBtn" class="btn-primary w-full mt-2 text-sm">محاسبه ریکاوری</button>
+                            <p id="recoveryResult" class="mt-2 text-center font-bold text-lg"></p>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="card">
-                <h2 class="text-2xl font-bold mb-4 border-b pb-2">۳. پیش‌بینی و خروجی</h2>
-                <div>
-                    <label for="predict-days" class="block font-bold text-gray-700 mb-1">تعداد روز برای پیش‌بینی</label>
-                    <input type="number" id="predict-days" value="30" class="w-full p-2 border rounded-lg">
-                </div>
-                <button id="export-btn" class="btn btn-secondary w-full mt-6">ذخیره نتایج در اکسل</button>
-            </div>
-        </div>
 
-        <!-- بخش نمودار -->
-        <div class="card">
-            <h2 class="text-2xl font-bold mb-4 border-b pb-2">۴. نمودار نتایج</h2>
-            <canvas id="chart"></canvas>
-        </div>
-        
-        <footer class="text-center mt-8 text-gray-500">
-            <p>توسعه‌یافته با هوش مصنوعی گوگل</p>
-        </footer>
+            <!-- Right Column: Results and Graph -->
+            <div class="flex flex-col gap-8">
+                <div class="card" id="results-card" style="display: none;">
+                    <h2 class="text-2xl font-semibold mb-4 border-b border-gray-600 pb-2">۲. نتایج تحلیل مدل</h2>
+                    <div class="space-y-3 text-lg">
+                        <p><strong>بهترین مدل شناسایی شده:</strong> <span id="bestModelName" class="result-value"></span></p>
+                        <p><strong>ضریب همبستگی (R²):</strong> <span id="rSquared" class="result-value"></span></p>
+                        <p><strong>معادله مدل (t = k * f(α) + c):</strong> <span id="modelEquation" class="result-value font-mono text-base"></span></p>
+                        <p><strong>حداکثر ریکاوری نهایی ($R_{max}$):</strong> <span id="maxRecovery" class="result-value"></span></p>
+                    </div>
+                </div>
+                
+                <div class="card" id="chart-card" style="display: none;">
+                    <canvas id="leachingChart"></canvas>
+                </div>
+                 <div class="card" id="guidance-card">
+                    <h2 class="text-2xl font-semibold mb-4 border-b border-gray-600 pb-2">راهنمای استفاده و تفسیر نتایج</h2>
+                    <div class="space-y-4 text-gray-300">
+                        <p><strong>۱. ورود داده:</strong> لیست ریکاوری‌های تجمعی روزانه را از اکسل یا فایل متنی کپی کرده و در کادر مربوطه بچسبانید. مطمئن شوید هر عدد در یک خط جداگانه قرار دارد.</p>
+                        <p><strong>۲. تحلیل:</strong> دکمه "شروع تحلیل" را بزنید. برنامه به طور خودکار داده‌ها را نرمال‌سازی کرده و سه مدل سینتیکی اصلی را تست می‌کند.</p>
+                        <p><strong>۳. تفسیر نتایج:</strong>
+                            <ul class="list-disc list-inside space-y-2 pr-4">
+                                <li><strong>بهترین مدل:</strong> نشان‌دهنده گلوگاه اصلی فرآیند شماست (نفوذ در خاکستر، واکنش شیمیایی یا نفوذ در فیلم مایع).</li>
+                                <li><strong>R-squared (R²):</strong> این عدد (بین ۰ و ۱) نشان می‌دهد که مدل چقدر با داده‌های واقعی شما مطابقت دارد. مقدار بالای ۰.۹۵ نشان‌دهنده تطابق عالی است.</li>
+                                <li><strong>معادله مدل:</strong> این فرمول ریاضی، قلب مدل پیش‌بینی شماست که رابطه بین زمان و ریکاوری را توصیف می‌کند.</li>
+                            </ul>
+                        </p>
+                        <p><strong>۴. پیش‌بینی:</strong> پس از ساخت مدل، می‌توانید با وارد کردن ریکاوری یا زمان دلخواه، پارامتر دیگر را پیش‌بینی کنید. این ابزار برای برنامه‌ریزی تولید و تصمیم‌گیری‌های اقتصادی بسیار مفید است.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
     </div>
 
-    <script>
-        // --- START OF EMBEDDED Levenberg-Marquardt Library (FIXED) ---
-        // This code is a self-contained implementation of the LM algorithm.
-        // All 'const' declarations have been changed to 'let' for maximum browser compatibility.
-        const LM = (function() {
-            function check(data, F, options) {
-                if (!data.x || !data.y) throw new Error('Data must be an object with x and y properties');
-                if (data.x.length !== data.y.length) throw new Error('x and y arrays must have the same length');
-                if (typeof F !== 'function') throw new Error('F must be a function');
-            }
+<script>
+// --- CORE LOGIC ---
 
-            function gradient(F, p, h) {
-                h = h || 1e-5;
-                let n = p.length;
-                let grad = new Array(n);
-                let p_h = p.slice();
-                for (let i = 0; i < n; i++) {
-                    p_h[i] += h;
-                    let f_p_h = F(p_h);
-                    p_h[i] -= h;
-                    let f_p = F(p);
-                    grad[i] = f_p_h.map((val, j) => (val - f_p[j]) / h);
-                }
-                return grad;
-            }
+// Global variables to store analysis results
+let chartInstance = null;
+let bestModel = null;
+let rMax = 0;
 
-            function levenbergMarquardt(data, F, options) {
-                check(data, F, options);
-                let { x, y } = data;
-                let {
-                    maxIterations = 100,
-                    initialValues = new Array(F.length).fill(1),
-                    damping = 0.001,
-                    gradientDifference = 1e-5,
-                    errorTolerance = 1e-7
-                } = options;
+const analyzeBtn = document.getElementById('analyzeBtn');
+analyzeBtn.addEventListener('click', runAnalysis);
 
-                let p = initialValues.slice();
-                let err = y.map((val, i) => val - F(p)(x[i]));
-                let sse = err.reduce((a, b) => a + b * b, 0);
+function runAnalysis() {
+    // 1. Get and parse data
+    const rawData = document.getElementById('recoveryData').value.trim();
+    if (!rawData) {
+        alert('لطفاً داده‌های ریکاوری را وارد کنید.');
+        return;
+    }
+    const recoveryData = rawData.split('\n').map(Number).filter(n => !isNaN(n) && n > 0);
+    if (recoveryData.length < 3) {
+        alert('حداقل ۳ نقطه داده برای تحلیل مورد نیاز است.');
+        return;
+    }
 
-                for (let iter = 0; iter < maxIterations; iter++) {
-                    let jacobian = gradient(p => x.map(F(p)), p, gradientDifference);
-                    let JT = jacobian[0].map((_, c) => jacobian.map(r => r[c]));
-                    let JTE = JT.map(row => row.reduce((sum, val, i) => sum + val * err[i], 0));
-                    let JTJ = JT.map(row => JT.map(col => row.reduce((sum, val, i) => sum + val * col[i], 0)));
+    // 2. Normalize data
+    rMax = Math.max(...recoveryData) / 100;
+    const timeData = Array.from({ length: recoveryData.length }, (_, i) => i + 1);
+    const alphaNorm = recoveryData.map(r => (r / 100) / rMax);
 
-                    let n = p.length;
-                    let L = JTJ.map(row => row.slice());
-                    for (let i = 0; i < n; i++) L[i][i] += damping;
+    // 3. Calculate kinetic functions for each model
+    const f_ash = alphaNorm.map(a => 1 - 3 * Math.pow(1 - a, 2/3) + 2 * (1 - a));
+    const f_reaction = alphaNorm.map(a => 1 - Math.pow(1 - a, 1/3));
+    const f_film = alphaNorm.map(a => a);
 
-                    try {
-                        let h = solve(L, JTE);
-                        let p_new = p.map((val, i) => val + h[i]);
-                        let err_new = y.map((val, i) => val - F(p_new)(x[i]));
-                        let sse_new = err_new.reduce((a, b) => a + b * b, 0);
+    // 4. Perform linear regression for each model
+    const model_ash = linearRegression(f_ash, timeData);
+    const model_reaction = linearRegression(f_reaction, timeData);
+    const model_film = linearRegression(f_film, timeData);
 
-                        if (sse_new < sse) {
-                            p = p_new;
-                            err = err_new;
-                            sse = sse_new;
-                            damping /= 10;
-                        } else {
-                            damping *= 10;
-                        }
-                    } catch (e) {
-                        damping *= 10;
-                    }
-                    if (sse < errorTolerance) break;
-                }
-                return { parameterValues: p, error: sse };
-            }
+    // 5. Find the best model
+    const models = [
+        { name: 'نفوذ در لایه خاکستر (Ash Diffusion)', r2: model_ash.r2, ...model_ash, type: 'ash' },
+        { name: 'واکنش شیمیایی (Chemical Reaction)', r2: model_reaction.r2, ...model_reaction, type: 'reaction' },
+        { name: 'نفوذ در فیلم مایع (Film Diffusion)', r2: model_film.r2, ...model_film, type: 'film' }
+    ];
 
-            function solve(A, b) {
-                let n = A.length;
-                for (let i = 0; i < n; i++) {
-                    let maxEl = Math.abs(A[i][i]);
-                    let maxRow = i;
-                    for (let k = i + 1; k < n; k++) {
-                        if (Math.abs(A[k][i]) > maxEl) {
-                            maxEl = Math.abs(A[k][i]);
-                            maxRow = k;
-                        }
-                    }
-                    for (let k = i; k < n; k++) {
-                        [A[maxRow][k], A[i][k]] = [A[i][k], A[maxRow][k]];
-                    }
-                    [b[maxRow], b[i]] = [b[i], b[maxRow]];
-                    for (let k = i + 1; k < n; k++) {
-                        let c = -A[k][i] / A[i][i];
-                        for (let j = i; j < n; j++) {
-                            if (i === j) A[k][j] = 0;
-                            else A[k][j] += c * A[i][j];
-                        }
-                        b[k] += c * b[i];
-                    }
-                }
-                let x = new Array(n);
-                for (let i = n - 1; i > -1; i--) {
-                    x[i] = b[i] / A[i][i];
-                    for (let k = i - 1; k > -1; k--) {
-                        b[k] -= A[k][i] * x[i];
-                    }
-                }
-                return x;
-            }
-            return levenbergMarquardt;
-        })();
-        // --- END OF EMBEDDED Library ---
+    bestModel = models.reduce((prev, current) => (prev.r2 > current.r2) ? prev : current);
 
-        // --- Application Logic ---
-        let processedData = null;
-        let fitParams = null;
-        let chartInstance = null;
+    // 6. Display results
+    displayResults();
+    
+    // 7. Draw chart
+    drawChart(timeData, recoveryData);
+}
 
-        const dataInput = document.getElementById('data-input');
-        const analyzeBtn = document.getElementById('analyze-btn');
-        const exportBtn = document.getElementById('export-btn');
-        const loadingOverlay = document.getElementById('loading-overlay');
+function displayResults() {
+    document.getElementById('bestModelName').textContent = bestModel.name;
+    document.getElementById('rSquared').textContent = bestModel.r2.toFixed(4);
+    document.getElementById('modelEquation').textContent = `t = ${bestModel.slope.toFixed(2)} * f(α) + ${bestModel.intercept.toFixed(2)}`;
+    document.getElementById('maxRecovery').textContent = `${(rMax * 100).toFixed(2)}%`;
 
-        const modelFunc = (t, params) => {
-            const [A, k, C] = params;
-            return A * Math.exp(-k * t) + C;
-        };
-        
-        analyzeBtn.addEventListener('click', () => {
-            const inputText = dataInput.value.trim();
-            if (!inputText) {
-                alert('لطفاً ابتدا داده‌ها را در کادر مربوطه وارد کنید.');
-                return;
-            }
-            
-            loadingOverlay.classList.remove('hidden');
+    document.getElementById('results-card').style.display = 'block';
+    document.getElementById('prediction-card').style.display = 'block';
+    document.getElementById('chart-card').style.display = 'block';
+    document.getElementById('guidance-card').style.display = 'none';
+}
 
-            setTimeout(() => {
-                try {
-                    const yData = inputText.split('\n')
-                                         .map(line => parseFloat(line.trim()))
-                                         .filter(num => !isNaN(num));
-
-                    if (yData.length < 3) {
-                        throw new Error("برای تحلیل حداقل به ۳ نقطه داده معتبر نیاز است.");
-                    }
-                    
-                    const tData = Array.from({ length: yData.length }, (_, i) => i + 1);
-                    
-                    processedData = { t: tData, y: yData };
-
-                    const fnToFit = (params) => (t) => modelFunc(t, params);
-                    const dataForFitting = { x: tData, y: yData };
-                    const initialGuess = [Math.max(...yData), 0.1, Math.min(...yData)];
-                    const options = {
-                        damping: 1.5,
-                        initialValues: initialGuess,
-                        maxIterations: 200,
-                    };
-                    
-                    const result = LM(dataForFitting, fnToFit, options);
-                    fitParams = result.parameterValues;
-
-                    document.getElementById('param-A').textContent = fitParams[0].toFixed(2);
-                    document.getElementById('param-k').textContent = fitParams[1].toFixed(3);
-                    document.getElementById('param-C').textContent = fitParams[2].toFixed(2);
-
-                    plotResults(tData, yData);
-
-                } catch (error) {
-                    alert(`خطا در هنگام تحلیل: ${error.message}`);
-                } finally {
-                    loadingOverlay.classList.add('hidden');
-                }
-            }, 50);
-        });
-
-        function plotResults(tData, yData) {
-            const ctx = document.getElementById('chart').getContext('2d');
-            if (chartInstance) chartInstance.destroy();
-
-            const fittedData = tData.map(t => modelFunc(t, fitParams));
-
-            chartInstance = new Chart(ctx, {
-                type: 'scatter',
-                data: {
-                    datasets: [{
-                        label: 'داده‌های واقعی',
-                        data: tData.map((t, i) => ({ x: t, y: yData[i] })),
-                        backgroundColor: 'rgba(29, 78, 216, 0.6)',
-                        type: 'scatter',
-                        pointRadius: 5,
-                    }, {
-                        label: 'مدل برازش شده',
-                        data: tData.map((t, i) => ({ x: t, y: fittedData[i] })),
-                        borderColor: 'rgba(217, 70, 239, 1)',
-                        backgroundColor: 'transparent',
-                        type: 'line',
-                        borderWidth: 3,
-                        pointRadius: 0,
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: { x: { title: { display: true, text: 'زمان (روز)', font: { size: 14, family: 'Vazirmatn' }}},
-                              y: { title: { display: true, text: 'مقدار استخراج (کیلوگرم)', font: { size: 14, family: 'Vazirmatn' }}}},
-                    plugins: { legend: { labels: { font: { family: 'Vazirmatn' }}}}
-                }
-            });
+function drawChart(timeData, recoveryData) {
+    const ctx = document.getElementById('leachingChart').getContext('2d');
+    
+    // Generate predicted data points for the trendline
+    const predictedRecovery = timeData.map(t => {
+        const f_alpha = (t - bestModel.intercept) / bestModel.slope;
+        let alpha_norm = 0;
+        try {
+            alpha_norm = invertKineticFunction(f_alpha, bestModel.type);
+        } catch (e) {
+            console.error(e);
+            return null;
         }
+        return alpha_norm * rMax * 100;
+    }).filter(p => p !== null);
 
-        exportBtn.addEventListener('click', () => {
-            if (!processedData || !fitParams) {
-                alert('لطفاً ابتدا داده‌ها را وارد و تحلیل کنید.');
-                return;
+    if (chartInstance) {
+        chartInstance.destroy();
+    }
+
+    chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: timeData,
+            datasets: [{
+                type: 'scatter',
+                label: 'داده‌های واقعی',
+                data: recoveryData,
+                backgroundColor: '#3b82f6',
+                borderColor: '#3b82f6',
+                showLine: false,
+                pointRadius: 5,
+            }, {
+                type: 'line',
+                label: `مدل پیش‌بینی (${bestModel.name})`,
+                data: predictedRecovery,
+                borderColor: '#34d399',
+                backgroundColor: 'rgba(52, 211, 153, 0.1)',
+                borderWidth: 2,
+                pointRadius: 0,
+                tension: 0.1,
+                fill: true,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'نمودار ریکاوری تجمعی در برابر زمان',
+                    color: '#e5e7eb',
+                    font: { size: 18 }
+                },
+                legend: {
+                    labels: { color: '#e5e7eb' }
+                }
+            },
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'زمان (روز)',
+                        color: '#9ca3af'
+                    },
+                    ticks: { color: '#9ca3af' }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'ریکاوری تجمعی (%)',
+                        color: '#9ca3af'
+                    },
+                    ticks: { color: '#9ca3af' },
+                    beginAtZero: true
+                }
             }
+        }
+    });
+}
 
-            const results = processedData.t.map((t, i) => {
-                const y_real = processedData.y[i];
-                const y_pred = modelFunc(t, fitParams);
-                return {
-                    'زمان (روز)': t,
-                    'تولید واقعی': y_real,
-                    'تولید پیش‌بینی شده (مدل)': y_pred.toFixed(2)
-                };
-            });
 
-            const predictDays = parseInt(document.getElementById('predict-days').value) || 30;
-            const lastDay = processedData.t[processedData.t.length - 1];
-            for (let i = 1; i <= predictDays; i++) {
-                const futureDay = lastDay + i;
-                const futurePred = modelFunc(futureDay, fitParams);
-                results.push({
-                    'زمان (روز)': futureDay,
-                    'تولید واقعی': '',
-                    'تولید پیش‌بینی شده (مدل)': futurePred.toFixed(2)
-                });
+// --- PREDICTION LOGIC ---
+document.getElementById('predictTimeBtn').addEventListener('click', () => {
+    const targetRec = parseFloat(document.getElementById('targetRecovery').value);
+    if (isNaN(targetRec) || !bestModel) return;
+
+    if (targetRec > rMax * 100) {
+        document.getElementById('timeResult').textContent = 'بیش از حد ماکسیمم';
+        return;
+    }
+
+    const alpha_norm = (targetRec / 100) / rMax;
+    const f_alpha = calculateKineticFunction(alpha_norm, bestModel.type);
+    const predictedTime = bestModel.slope * f_alpha + bestModel.intercept;
+    
+    document.getElementById('timeResult').textContent = `~ ${predictedTime.toFixed(0)} روز`;
+});
+
+document.getElementById('predictRecoveryBtn').addEventListener('click', () => {
+    const targetTime = parseFloat(document.getElementById('targetTime').value);
+    if (isNaN(targetTime) || !bestModel) return;
+
+    const f_alpha = (targetTime - bestModel.intercept) / bestModel.slope;
+    
+    try {
+        const alpha_norm = invertKineticFunction(f_alpha, bestModel.type);
+        const predictedRec = alpha_norm * rMax * 100;
+        
+        if (predictedRec > rMax * 100) {
+             document.getElementById('recoveryResult').textContent = `~ ${(rMax*100).toFixed(1)}% (حداکثر)`;
+        } else {
+             document.getElementById('recoveryResult').textContent = `~ ${predictedRec.toFixed(1)}%`;
+        }
+    } catch (e) {
+        document.getElementById('recoveryResult').textContent = 'خطا در محاسبه';
+        console.error(e);
+    }
+});
+
+
+// --- UTILITY FUNCTIONS ---
+
+function linearRegression(x, y) {
+    const n = x.length;
+    let sum_x = 0, sum_y = 0, sum_xy = 0, sum_xx = 0, sum_yy = 0;
+
+    for (let i = 0; i < n; i++) {
+        sum_x += x[i];
+        sum_y += y[i];
+        sum_xy += (x[i] * y[i]);
+        sum_xx += (x[i] * x[i]);
+    }
+
+    const slope = (n * sum_xy - sum_x * sum_y) / (n * sum_xx - sum_x * sum_x);
+    const intercept = (sum_y - slope * sum_x) / n;
+    
+    // Calculate R-squared
+    let ss_tot = 0;
+    let ss_res = 0;
+    const y_mean = sum_y / n;
+
+    for (let i = 0; i < n; i++) {
+        ss_tot += Math.pow(y[i] - y_mean, 2);
+        ss_res += Math.pow(y[i] - (slope * x[i] + intercept), 2);
+    }
+    const r2 = 1 - (ss_res / ss_tot);
+
+    return { slope, intercept, r2 };
+}
+
+function calculateKineticFunction(alpha, type) {
+    switch(type) {
+        case 'ash': return 1 - 3 * Math.pow(1 - alpha, 2/3) + 2 * (1 - alpha);
+        case 'reaction': return 1 - Math.pow(1 - alpha, 1/3);
+        case 'film': return alpha;
+        default: throw new Error('Unknown model type');
+    }
+}
+
+function invertKineticFunction(f_alpha, type) {
+    if (f_alpha < 0) return 0;
+
+    switch(type) {
+        case 'reaction':
+            return 1 - Math.pow(1 - f_alpha, 3);
+        case 'film':
+            return f_alpha;
+        case 'ash':
+            // Ash model doesn't have a simple analytical inverse. Use numerical solver (binary search).
+            let low = 0, high = 1, mid, y;
+            for(let i = 0; i < 50; i++) { // 50 iterations for high precision
+                mid = (low + high) / 2;
+                y = calculateKineticFunction(mid, 'ash');
+                if (y < f_alpha) {
+                    low = mid;
+                } else {
+                    high = mid;
+                }
             }
+            return (low + high) / 2;
+        default: throw new Error('Unknown model type');
+    }
+}
 
-            const params = [
-                { 'پارامتر': 'A', 'مقدار': fitParams[0].toFixed(2) },
-                { 'پارامتر': 'k', 'مقدار': fitParams[1].toFixed(3) },
-                { 'پارامتر': 'C', 'مقدار': fitParams[2].toFixed(2) }
-            ];
-
-            const wb = XLSX.utils.book_new();
-            const ws_results = XLSX.utils.json_to_sheet(results);
-            const ws_params = XLSX.utils.json_to_sheet(params);
-
-            XLSX.utils.book_append_sheet(wb, ws_results, 'نتایج و پیش‌بینی');
-            XLSX.utils.book_append_sheet(wb, ws_params, 'پارامترهای مدل');
-
-            XLSX.writeFile(wb, 'نتایج_تحلیل_لیچینگ.xlsx');
-        });
-    </script>
+</script>
 </body>
 </html>
 
