@@ -3,391 +3,409 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ابزار تحلیل و پیش‌بینی سینتیک هیپ لیچینگ</title>
-    
-    <!-- Tailwind CSS for styling -->
+    <title>تحلیل غربال برای هیپ‌لیچینگ</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Chart.js for graphing -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <!-- Custom Font -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Vazirmatn', sans-serif;
-            background-color: #111827; /* Dark background */
-            color: #e5e7eb; /* Light text */
         }
-        .card {
-            background-color: #1f2937;
-            border: 1px solid #374151;
-            border-radius: 0.75rem;
-            padding: 1.5rem;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        .modal {
+            display: none; /* Hidden by default */
         }
-        .btn-primary {
-            background-color: #3b82f6;
-            color: white;
-            font-weight: 600;
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.5rem;
-            transition: background-color 0.3s;
-        }
-        .btn-primary:hover {
-            background-color: #2563eb;
-        }
-        textarea, input {
-            background-color: #374151;
-            border: 1px solid #4b5563;
-            color: #e5e7eb;
-            border-radius: 0.5rem;
-        }
-        textarea:focus, input:focus {
-            outline: none;
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 2px #1d4ed8;
-        }
-        .result-value {
-            color: #34d399; /* Green for positive results */
-            font-weight: 700;
-            font-size: 1.25rem;
+        .modal.active {
+            display: flex; /* Show when active */
         }
     </style>
 </head>
-<body class="p-4 md:p-8">
-    <div class="max-w-7xl mx-auto">
+<body class="bg-gray-100">
+
+    <div class="container mx-auto p-4 md:p-8">
         <header class="text-center mb-8">
-            <h1 class="text-3xl md:text-4xl font-bold text-white">ابزار تحلیل و پیش‌بینی سینتیک هیپ لیچینگ</h1>
-            <p class="text-lg text-gray-400 mt-2">مدل بهینه را پیدا کنید و عملکرد هیپ‌های آینده را پیش‌بینی نمایید.</p>
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800">تحلیل غربال برای هیپ‌لیچینگ مس اکسیدی</h1>
+            <p class="text-gray-600 mt-2">ورودی‌ها را بر حسب گرم وارد کرده و نتایج را مشاهده کنید</p>
         </header>
 
-        <main class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <!-- Left Column: Input and Controls -->
-            <div class="flex flex-col gap-8">
-                <div class="card">
-                    <h2 class="text-2xl font-semibold mb-4 border-b border-gray-600 pb-2">۱. ورود داده‌ها</h2>
-                    <label for="recoveryData" class="block mb-2 font-medium text-gray-300">داده‌های ریکاوری تجمعی (%) را اینجا کپی کنید. هر عدد در یک خط جدید.</label>
-                    <textarea id="recoveryData" rows="10" class="w-full p-2 text-left" dir="ltr" placeholder="8.5&#10;15.2&#10;23.1&#10;..."></textarea>
-                    <button id="analyzeBtn" class="btn-primary w-full mt-4">شروع تحلیل و ساخت مدل</button>
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Inputs and Controls Column -->
+            <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg">
+                <h2 class="text-2xl font-semibold text-gray-700 border-b-2 border-cyan-500 pb-3 mb-6">ورود داده‌ها</h2>
+                <div id="sieve-inputs" class="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+                    <!-- Sieve inputs will be dynamically generated here -->
                 </div>
-
-                <div class="card" id="prediction-card" style="display: none;">
-                    <h2 class="text-2xl font-semibold mb-4 border-b border-gray-600 pb-2">۳. ابزار پیش‌بینی</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- Predict Time -->
-                        <div>
-                            <label for="targetRecovery" class="block mb-2 font-medium">پیش‌بینی زمان برای ریکاوری مشخص:</label>
-                            <div class="flex items-center gap-2">
-                                <input type="number" id="targetRecovery" class="w-full p-2" placeholder="مثلاً: 85">
-                                <span class="text-gray-400">%</span>
-                            </div>
-                            <button id="predictTimeBtn" class="btn-primary w-full mt-2 text-sm">محاسبه زمان</button>
-                            <p id="timeResult" class="mt-2 text-center font-bold text-lg"></p>
-                        </div>
-                        <!-- Predict Recovery -->
-                        <div>
-                            <label for="targetTime" class="block mb-2 font-medium">پیش‌بینی ریکاوری در زمان مشخص:</label>
-                            <div class="flex items-center gap-2">
-                                <input type="number" id="targetTime" class="w-full p-2" placeholder="مثلاً: 150">
-                                <span class="text-gray-400">روز</span>
-                            </div>
-                            <button id="predictRecoveryBtn" class="btn-primary w-full mt-2 text-sm">محاسبه ریکاوری</button>
-                            <p id="recoveryResult" class="mt-2 text-center font-bold text-lg"></p>
-                        </div>
-                    </div>
+                <div class="grid grid-cols-2 gap-4 mt-8">
+                    <button id="calculate-btn" class="w-full bg-cyan-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-cyan-700 transition-colors shadow-md">محاسبه</button>
+                    <button id="reset-btn" class="w-full bg-red-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-red-600 transition-colors shadow-md">ریست</button>
+                    <button id="manage-sieves-btn" class="w-full col-span-2 bg-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-700 transition-colors shadow-md">تنظیم سرندها</button>
+                    <button id="export-btn" class="w-full col-span-2 bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 transition-colors shadow-md disabled:bg-gray-400" disabled>خروجی اکسل</button>
                 </div>
             </div>
 
-            <!-- Right Column: Results and Graph -->
-            <div class="flex flex-col gap-8">
-                <div class="card" id="results-card" style="display: none;">
-                    <h2 class="text-2xl font-semibold mb-4 border-b border-gray-600 pb-2">۲. نتایج تحلیل مدل</h2>
-                    <div class="space-y-3 text-lg">
-                        <p><strong>بهترین مدل شناسایی شده:</strong> <span id="bestModelName" class="result-value"></span></p>
-                        <p><strong>ضریب همبستگی (R²):</strong> <span id="rSquared" class="result-value"></span></p>
-                        <p><strong>معادله مدل (t = k * f(α) + c):</strong> <span id="modelEquation" class="result-value font-mono text-base"></span></p>
-                        <p><strong>حداکثر ریکاوری نهایی ($R_{max}$):</strong> <span id="maxRecovery" class="result-value"></span></p>
-                    </div>
-                </div>
+            <!-- Results and Charts Column -->
+            <div id="results-container" class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg hidden">
+                 <h2 class="text-2xl font-semibold text-gray-700 border-b-2 border-teal-500 pb-3 mb-6">نتایج تحلیل</h2>
                 
-                <div class="card" id="chart-card" style="display: none;">
-                    <canvas id="leachingChart"></canvas>
+                <!-- Summary Stats -->
+                <div id="summary-stats" class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center mb-8">
+                    <!-- Summary data will be injected here -->
                 </div>
-                 <div class="card" id="guidance-card">
-                    <h2 class="text-2xl font-semibold mb-4 border-b border-gray-600 pb-2">راهنمای استفاده و تفسیر نتایج</h2>
-                    <div class="space-y-4 text-gray-300">
-                        <p><strong>۱. ورود داده:</strong> لیست ریکاوری‌های تجمعی روزانه را از اکسل یا فایل متنی کپی کرده و در کادر مربوطه بچسبانید. مطمئن شوید هر عدد در یک خط جداگانه قرار دارد.</p>
-                        <p><strong>۲. تحلیل:</strong> دکمه "شروع تحلیل" را بزنید. برنامه به طور خودکار داده‌ها را نرمال‌سازی کرده و سه مدل سینتیکی اصلی را تست می‌کند.</p>
-                        <p><strong>۳. تفسیر نتایج:</strong>
-                            <ul class="list-disc list-inside space-y-2 pr-4">
-                                <li><strong>بهترین مدل:</strong> نشان‌دهنده گلوگاه اصلی فرآیند شماست (نفوذ در خاکستر، واکنش شیمیایی یا نفوذ در فیلم مایع).</li>
-                                <li><strong>R-squared (R²):</strong> این عدد (بین ۰ و ۱) نشان می‌دهد که مدل چقدر با داده‌های واقعی شما مطابقت دارد. مقدار بالای ۰.۹۵ نشان‌دهنده تطابق عالی است.</li>
-                                <li><strong>معادله مدل:</strong> این فرمول ریاضی، قلب مدل پیش‌بینی شماست که رابطه بین زمان و ریکاوری را توصیف می‌کند.</li>
-                            </ul>
-                        </p>
-                        <p><strong>۴. پیش‌بینی:</strong> پس از ساخت مدل، می‌توانید با وارد کردن ریکاوری یا زمان دلخواه، پارامتر دیگر را پیش‌بینی کنید. این ابزار برای برنامه‌ریزی تولید و تصمیم‌گیری‌های اقتصادی بسیار مفید است.</p>
+
+                <!-- Charts -->
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                    <div>
+                        <h3 class="text-xl font-semibold text-gray-700 mb-4 text-center">نمودار تجمعی عبوری</h3>
+                        <canvas id="passing-chart"></canvas>
+                        <p class="text-center text-sm text-gray-500 mt-2">اندازه سرند (میکرون) - مقیاس لگاریتمی</p>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-semibold text-gray-700 mb-4 text-center">هیستوگرام توزیع وزن</h3>
+                        <canvas id="weight-chart"></canvas>
                     </div>
                 </div>
+            </div>
+             <div id="welcome-container" class="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg flex items-center justify-center">
+                <p class="text-gray-500 text-xl">نتایج تحلیل پس از محاسبه در اینجا نمایش داده می‌شوند.</p>
             </div>
         </main>
     </div>
 
-<script>
-// --- CORE LOGIC ---
+    <!-- Sieve Management Modal -->
+    <div id="sieve-modal" class="modal fixed inset-0 bg-black bg-opacity-50 items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-2xl p-6 w-full max-w-md">
+            <h2 class="text-2xl font-bold mb-4">مدیریت سرندها</h2>
+            <div id="modal-sieve-list" class="max-h-60 overflow-y-auto border rounded-lg p-2 mb-4">
+                <!-- List of current sieves -->
+            </div>
+            <div class="border-t pt-4">
+                <h3 class="text-lg font-semibold mb-2">افزودن سرند جدید</h3>
+                <input id="new-sieve-label" type="text" placeholder="نام سرند (مثال: 40 مش)" class="w-full p-2 border rounded mb-2">
+                <input id="new-sieve-size" type="number" placeholder="اندازه (میکرون) - برای سینی خالی بگذارید" class="w-full p-2 border rounded mb-4">
+                <div class="flex justify-between gap-4">
+                    <button id="add-sieve-btn" class="bg-blue-500 text-white px-4 py-2 rounded-lg flex-grow">افزودن</button>
+                    <button id="close-modal-btn" class="bg-gray-500 text-white px-4 py-2 rounded-lg flex-grow">بستن</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-// Global variables to store analysis results
-let chartInstance = null;
-let bestModel = null;
-let rMax = 0;
 
-const analyzeBtn = document.getElementById('analyzeBtn');
-analyzeBtn.addEventListener('click', runAnalysis);
+    <script>
+        // --- INITIAL DATA ---
+        let sieves = [
+            { label: 'سرند 15', size: 150000 }, { label: '10 سانت', size: 100000 },
+            { label: '7.5 سانت', size: 75000 }, { label: '2 اینچ', size: 50800 },
+            { label: '1اینچ', size: 25400 }, { label: '3/4 اینچ', size: 19000 },
+            { label: '1/2 اینچ', size: 12700 }, { label: '4 مش', size: 4760 },
+            { label: '8 مش', size: 2380 }, { label: '16 مش', size: 1190 },
+            { label: '30 مش', size: 595 }, { label: '100 مش', size: 149 },
+            { label: 'سینی', size: null },
+        ];
 
-function runAnalysis() {
-    // 1. Get and parse data
-    const rawData = document.getElementById('recoveryData').value.trim();
-    if (!rawData) {
-        alert('لطفاً داده‌های ریکاوری را وارد کنید.');
-        return;
-    }
-    const recoveryData = rawData.split('\n').map(Number).filter(n => !isNaN(n) && n > 0);
-    if (recoveryData.length < 3) {
-        alert('حداقل ۳ نقطه داده برای تحلیل مورد نیاز است.');
-        return;
-    }
+        const TARGET_VALUES = { d10: 10, d30: 30, d50: 50, d60: 60, d80: 80 };
+        let latestAnalysis = null;
+        let passingChartInstance = null;
+        let weightChartInstance = null;
 
-    // 2. Normalize data
-    rMax = Math.max(...recoveryData) / 100;
-    const timeData = Array.from({ length: recoveryData.length }, (_, i) => i + 1);
-    const alphaNorm = recoveryData.map(r => (r / 100) / rMax);
+        // --- DOM ELEMENTS ---
+        const sieveInputsContainer = document.getElementById('sieve-inputs');
+        const calculateBtn = document.getElementById('calculate-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const exportBtn = document.getElementById('export-btn');
+        const resultsContainer = document.getElementById('results-container');
+        const welcomeContainer = document.getElementById('welcome-container');
+        const summaryStatsContainer = document.getElementById('summary-stats');
+        
+        // Modal elements
+        const manageSievesBtn = document.getElementById('manage-sieves-btn');
+        const sieveModal = document.getElementById('sieve-modal');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const addSieveBtn = document.getElementById('add-sieve-btn');
+        const modalSieveList = document.getElementById('modal-sieve-list');
+        const newSieveLabelInput = document.getElementById('new-sieve-label');
+        const newSieveSizeInput = document.getElementById('new-sieve-size');
 
-    // 3. Calculate kinetic functions for each model
-    const f_ash = alphaNorm.map(a => 1 - 3 * Math.pow(1 - a, 2/3) + 2 * (1 - a));
-    const f_reaction = alphaNorm.map(a => 1 - Math.pow(1 - a, 1/3));
-    const f_film = alphaNorm.map(a => a);
+        // --- UI RENDERING ---
+        function renderSieveInputs() {
+            sieveInputsContainer.innerHTML = '';
+            sieves.sort((a, b) => (b.size ?? -1) - (a.size ?? -1));
+            sieves.forEach(sieve => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center gap-4';
+                const label = document.createElement('label');
+                label.className = 'w-2/3 text-right text-gray-700';
+                label.textContent = `${sieve.label} (${sieve.size ?? 'سینی'} µm):`;
+                label.htmlFor = `sieve-${sieve.label}`;
+                
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.id = `sieve-${sieve.label}`;
+                input.className = 'w-1/3 p-2 border rounded-md text-left focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500';
+                input.placeholder = '0.0';
+                input.value = '0';
 
-    // 4. Perform linear regression for each model
-    const model_ash = linearRegression(f_ash, timeData);
-    const model_reaction = linearRegression(f_reaction, timeData);
-    const model_film = linearRegression(f_film, timeData);
+                div.appendChild(label);
+                div.appendChild(input);
+                sieveInputsContainer.appendChild(div);
+            });
+        }
 
-    // 5. Find the best model
-    const models = [
-        { name: 'نفوذ در لایه خاکستر (Ash Diffusion)', r2: model_ash.r2, ...model_ash, type: 'ash' },
-        { name: 'واکنش شیمیایی (Chemical Reaction)', r2: model_reaction.r2, ...model_reaction, type: 'reaction' },
-        { name: 'نفوذ در فیلم مایع (Film Diffusion)', r2: model_film.r2, ...model_film, type: 'film' }
-    ];
+        // --- CALCULATION LOGIC ---
+        function getFloat(value) {
+            const num = parseFloat(value);
+            return isNaN(num) ? 0.0 : num;
+        }
 
-    bestModel = models.reduce((prev, current) => (prev.r2 > current.r2) ? prev : current);
+        function linearInterpolation(target, points) {
+            if (!points || points.length === 0) return null;
+            points.sort((a,b) => b[0] - a[0]); // Sort by passing percent descending
+            if (target >= points[0][0]) return points[0][1];
+            if (target <= points[points.length - 1][0]) return points[points.length - 1][1];
 
-    // 6. Display results
-    displayResults();
-    
-    // 7. Draw chart
-    drawChart(timeData, recoveryData);
-}
-
-function displayResults() {
-    document.getElementById('bestModelName').textContent = bestModel.name;
-    document.getElementById('rSquared').textContent = bestModel.r2.toFixed(4);
-    document.getElementById('modelEquation').textContent = `t = ${bestModel.slope.toFixed(2)} * f(α) + ${bestModel.intercept.toFixed(2)}`;
-    document.getElementById('maxRecovery').textContent = `${(rMax * 100).toFixed(2)}%`;
-
-    document.getElementById('results-card').style.display = 'block';
-    document.getElementById('prediction-card').style.display = 'block';
-    document.getElementById('chart-card').style.display = 'block';
-    document.getElementById('guidance-card').style.display = 'none';
-}
-
-function drawChart(timeData, recoveryData) {
-    const ctx = document.getElementById('leachingChart').getContext('2d');
-    
-    // Generate predicted data points for the trendline
-    const predictedRecovery = timeData.map(t => {
-        const f_alpha = (t - bestModel.intercept) / bestModel.slope;
-        let alpha_norm = 0;
-        try {
-            alpha_norm = invertKineticFunction(f_alpha, bestModel.type);
-        } catch (e) {
-            console.error(e);
+            for (let i = 0; i < points.length - 1; i++) {
+                const [p_high, d_high] = points[i];
+                const [p_low, d_low] = points[i + 1];
+                if (p_high >= target && target >= p_low) {
+                    if (p_high - p_low === 0) return d_high;
+                    const fraction = (p_high - target) / (p_high - p_low);
+                    return d_high + (d_low - d_high) * fraction;
+                }
+            }
             return null;
         }
-        return alpha_norm * rMax * 100;
-    }).filter(p => p !== null);
 
-    if (chartInstance) {
-        chartInstance.destroy();
-    }
+        function performAnalysis() {
+            const weights = sieves.map(sieve => getFloat(document.getElementById(`sieve-${sieve.label}`).value));
+            const totalWeight = weights.reduce((sum, w) => sum + w, 0);
 
-    chartInstance = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: timeData,
-            datasets: [{
-                type: 'scatter',
-                label: 'داده‌های واقعی',
-                data: recoveryData,
-                backgroundColor: '#3b82f6',
-                borderColor: '#3b82f6',
-                showLine: false,
-                pointRadius: 5,
-            }, {
+            if (totalWeight === 0) {
+                alert('مجموع وزن‌ها نمی‌تواند صفر باشد.');
+                return;
+            }
+
+            const percents = weights.map(w => (w / totalWeight) * 100);
+            const cumRetained = [];
+            let cum = 0.0;
+            percents.forEach(p => {
+                cum += p;
+                cumRetained.push(cum);
+            });
+            const percentPassing = cumRetained.map(cr => 100 - cr);
+
+            const interpPoints = [];
+            sieves.forEach((sieve, i) => {
+                if (sieve.size !== null) {
+                    interpPoints.push([percentPassing[i], sieve.size]);
+                }
+            });
+
+            const dValues = {};
+            for (const key in TARGET_VALUES) {
+                dValues[key] = linearInterpolation(TARGET_VALUES[key], interpPoints);
+            }
+
+            let Cu = null;
+            if (dValues.d10 && dValues.d10 > 0 && dValues.d60) {
+                Cu = dValues.d60 / dValues.d10;
+            }
+
+            let Cc = null;
+            if (dValues.d10 && dValues.d60 && dValues.d30 && dValues.d10 > 0 && dValues.d60 > 0) {
+                Cc = Math.pow(dValues.d30, 2) / (dValues.d10 * dValues.d60);
+            }
+
+            latestAnalysis = {
+                weights, percents, cumRetained, percentPassing, dValues, Cu, Cc, totalWeight
+            };
+            
+            displayResults();
+            exportBtn.disabled = false;
+        }
+
+        function displayResults() {
+            welcomeContainer.classList.add('hidden');
+            resultsContainer.classList.remove('hidden');
+
+            // **FIX**: Added d50 and d80 to the display grid
+            summaryStatsContainer.innerHTML = `
+                <div class="bg-gray-100 p-3 rounded-lg"><p class="text-sm text-gray-500">D10</p><p class="text-xl font-bold text-gray-800">${latestAnalysis.dValues.d10?.toFixed(2) ?? 'N/A'}</p></div>
+                <div class="bg-gray-100 p-3 rounded-lg"><p class="text-sm text-gray-500">D30</p><p class="text-xl font-bold text-gray-800">${latestAnalysis.dValues.d30?.toFixed(2) ?? 'N/A'}</p></div>
+                <div class="bg-gray-100 p-3 rounded-lg"><p class="text-sm text-gray-500">D50</p><p class="text-xl font-bold text-gray-800">${latestAnalysis.dValues.d50?.toFixed(2) ?? 'N/A'}</p></div>
+                <div class="bg-gray-100 p-3 rounded-lg"><p class="text-sm text-gray-500">D60</p><p class="text-xl font-bold text-gray-800">${latestAnalysis.dValues.d60?.toFixed(2) ?? 'N/A'}</p></div>
+                <div class="bg-gray-100 p-3 rounded-lg"><p class="text-sm text-gray-500">D80</p><p class="text-xl font-bold text-gray-800">${latestAnalysis.dValues.d80?.toFixed(2) ?? 'N/A'}</p></div>
+                <div class="bg-gray-100 p-3 rounded-lg"><p class="text-sm text-gray-500">Cu</p><p class="text-xl font-bold text-gray-800">${latestAnalysis.Cu?.toFixed(2) ?? 'N/A'}</p></div>
+                <div class="bg-gray-100 p-3 rounded-lg"><p class="text-sm text-gray-500">Cc</p><p class="text-xl font-bold text-gray-800">${latestAnalysis.Cc?.toFixed(2) ?? 'N/A'}</p></div>
+                <div class="bg-gray-100 p-3 rounded-lg"><p class="text-sm text-gray-500">Total Weight</p><p class="text-xl font-bold text-gray-800">${latestAnalysis.totalWeight?.toFixed(2) ?? 'N/A'} g</p></div>
+            `;
+            
+            updateCharts();
+        }
+
+        function updateCharts() {
+            // Passing Chart
+            const passingCtx = document.getElementById('passing-chart').getContext('2d');
+            const passingData = sieves
+                .map((s, i) => ({ x: s.size, y: latestAnalysis.percentPassing[i] }))
+                .filter(d => d.x !== null)
+                .sort((a,b) => a.x - b.x);
+
+            if (passingChartInstance) passingChartInstance.destroy();
+            passingChartInstance = new Chart(passingCtx, {
                 type: 'line',
-                label: `مدل پیش‌بینی (${bestModel.name})`,
-                data: predictedRecovery,
-                borderColor: '#34d399',
-                backgroundColor: 'rgba(52, 211, 153, 0.1)',
-                borderWidth: 2,
-                pointRadius: 0,
-                tension: 0.1,
-                fill: true,
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'نمودار ریکاوری تجمعی در برابر زمان',
-                    color: '#e5e7eb',
-                    font: { size: 18 }
+                data: {
+                    datasets: [{
+                        label: 'درصد عبوری',
+                        data: passingData,
+                        borderColor: 'rgb(22, 163, 74)',
+                        backgroundColor: 'rgba(22, 163, 74, 0.2)',
+                        fill: true,
+                        tension: 0.1
+                    }]
                 },
-                legend: {
-                    labels: { color: '#e5e7eb' }
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: { type: 'logarithmic', title: { display: false } },
+                        y: { beginAtZero: true, max: 100, title: { display: true, text: 'درصد عبوری (%)' } }
+                    }
                 }
-            },
-            scales: {
-                x: {
-                    title: {
-                        display: true,
-                        text: 'زمان (روز)',
-                        color: '#9ca3af'
-                    },
-                    ticks: { color: '#9ca3af' }
+            });
+
+            // Weight Chart
+            const weightCtx = document.getElementById('weight-chart').getContext('2d');
+            const weightData = sieves.filter(s => s.size !== null);
+            if (weightChartInstance) weightChartInstance.destroy();
+            weightChartInstance = new Chart(weightCtx, {
+                type: 'bar',
+                data: {
+                    labels: weightData.map(s => s.label),
+                    datasets: [{
+                        label: 'وزن باقی‌مانده (گرم)',
+                        data: latestAnalysis.weights.slice(0, weightData.length),
+                        backgroundColor: 'rgba(59, 130, 246, 0.6)',
+                        borderColor: 'rgb(59, 130, 246)',
+                        borderWidth: 1
+                    }]
                 },
-                y: {
-                    title: {
-                        display: true,
-                        text: 'ریکاوری تجمعی (%)',
-                        color: '#9ca3af'
-                    },
-                    ticks: { color: '#9ca3af' },
-                    beginAtZero: true
-                }
-            }
+                options: { responsive: true, scales: { y: { beginAtZero: true } } }
+            });
         }
-    });
-}
-
-
-// --- PREDICTION LOGIC ---
-document.getElementById('predictTimeBtn').addEventListener('click', () => {
-    const targetRec = parseFloat(document.getElementById('targetRecovery').value);
-    if (isNaN(targetRec) || !bestModel) return;
-
-    if (targetRec > rMax * 100) {
-        document.getElementById('timeResult').textContent = 'بیش از حد ماکسیمم';
-        return;
-    }
-
-    const alpha_norm = (targetRec / 100) / rMax;
-    const f_alpha = calculateKineticFunction(alpha_norm, bestModel.type);
-    const predictedTime = bestModel.slope * f_alpha + bestModel.intercept;
-    
-    document.getElementById('timeResult').textContent = `~ ${predictedTime.toFixed(0)} روز`;
-});
-
-document.getElementById('predictRecoveryBtn').addEventListener('click', () => {
-    const targetTime = parseFloat(document.getElementById('targetTime').value);
-    if (isNaN(targetTime) || !bestModel) return;
-
-    const f_alpha = (targetTime - bestModel.intercept) / bestModel.slope;
-    
-    try {
-        const alpha_norm = invertKineticFunction(f_alpha, bestModel.type);
-        const predictedRec = alpha_norm * rMax * 100;
         
-        if (predictedRec > rMax * 100) {
-             document.getElementById('recoveryResult').textContent = `~ ${(rMax*100).toFixed(1)}% (حداکثر)`;
-        } else {
-             document.getElementById('recoveryResult').textContent = `~ ${predictedRec.toFixed(1)}%`;
+        function resetProgram() {
+            renderSieveInputs(); // This will reset inputs to 0
+            latestAnalysis = null;
+            resultsContainer.classList.add('hidden');
+            welcomeContainer.classList.remove('hidden');
+            exportBtn.disabled = true;
+            if (passingChartInstance) passingChartInstance.destroy();
+            if (weightChartInstance) weightChartInstance.destroy();
         }
-    } catch (e) {
-        document.getElementById('recoveryResult').textContent = 'خطا در محاسبه';
-        console.error(e);
-    }
-});
 
-
-// --- UTILITY FUNCTIONS ---
-
-function linearRegression(x, y) {
-    const n = x.length;
-    let sum_x = 0, sum_y = 0, sum_xy = 0, sum_xx = 0, sum_yy = 0;
-
-    for (let i = 0; i < n; i++) {
-        sum_x += x[i];
-        sum_y += y[i];
-        sum_xy += (x[i] * y[i]);
-        sum_xx += (x[i] * x[i]);
-    }
-
-    const slope = (n * sum_xy - sum_x * sum_y) / (n * sum_xx - sum_x * sum_x);
-    const intercept = (sum_y - slope * sum_x) / n;
-    
-    // Calculate R-squared
-    let ss_tot = 0;
-    let ss_res = 0;
-    const y_mean = sum_y / n;
-
-    for (let i = 0; i < n; i++) {
-        ss_tot += Math.pow(y[i] - y_mean, 2);
-        ss_res += Math.pow(y[i] - (slope * x[i] + intercept), 2);
-    }
-    const r2 = 1 - (ss_res / ss_tot);
-
-    return { slope, intercept, r2 };
-}
-
-function calculateKineticFunction(alpha, type) {
-    switch(type) {
-        case 'ash': return 1 - 3 * Math.pow(1 - alpha, 2/3) + 2 * (1 - alpha);
-        case 'reaction': return 1 - Math.pow(1 - alpha, 1/3);
-        case 'film': return alpha;
-        default: throw new Error('Unknown model type');
-    }
-}
-
-function invertKineticFunction(f_alpha, type) {
-    if (f_alpha < 0) return 0;
-
-    switch(type) {
-        case 'reaction':
-            return 1 - Math.pow(1 - f_alpha, 3);
-        case 'film':
-            return f_alpha;
-        case 'ash':
-            // Ash model doesn't have a simple analytical inverse. Use numerical solver (binary search).
-            let low = 0, high = 1, mid, y;
-            for(let i = 0; i < 50; i++) { // 50 iterations for high precision
-                mid = (low + high) / 2;
-                y = calculateKineticFunction(mid, 'ash');
-                if (y < f_alpha) {
-                    low = mid;
-                } else {
-                    high = mid;
-                }
+        // --- EXCEL EXPORT ---
+        function exportToExcel() {
+            if (!latestAnalysis) {
+                alert('ابتدا تحلیل را انجام دهید.');
+                return;
             }
-            return (low + high) / 2;
-        default: throw new Error('Unknown model type');
-    }
-}
+            // **FIX**: Added d50 and d80 to the export data
+            const rawData = sieves.map((sieve, i) => ({
+                'سرند': sieve.label,
+                'اندازه (میکرون)': sieve.size ?? '',
+                'وزن (گرم)': latestAnalysis.weights[i],
+                'درصد نگه‌داری': latestAnalysis.percents[i],
+                'درصد تجمعی نگه‌داری': latestAnalysis.cumRetained[i],
+                'درصد عبوری': latestAnalysis.percentPassing[i],
+            }));
+            const summaryData = [
+                { 'پارامتر': 'd10', 'مقدار': latestAnalysis.dValues.d10 },
+                { 'پارامتر': 'd30', 'مقدار': latestAnalysis.dValues.d30 },
+                { 'پارامتر': 'd50', 'مقدار': latestAnalysis.dValues.d50 },
+                { 'پارامتر': 'd60', 'مقدار': latestAnalysis.dValues.d60 },
+                { 'پارامتر': 'd80', 'مقدار': latestAnalysis.dValues.d80 },
+                { 'پارامتر': 'Cu', 'مقدار': latestAnalysis.Cu },
+                { 'پارامتر': 'Cc', 'مقدار': latestAnalysis.Cc },
+            ];
+            const wb = XLSX.utils.book_new();
+            const wsRaw = XLSX.utils.json_to_sheet(rawData);
+            const wsSummary = XLSX.utils.json_to_sheet(summaryData);
+            XLSX.utils.book_append_sheet(wb, wsRaw, 'Raw Data');
+            XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
 
-</script>
+            // **FIX**: Changed export method for better mobile compatibility
+            const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+            const blob = new Blob([wbout], { type: 'application/octet-stream' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'SieveAnalysisResults.xlsx';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // --- MODAL LOGIC ---
+        function renderModalSieveList() {
+            modalSieveList.innerHTML = '';
+            sieves.forEach(sieve => {
+                const row = document.createElement('div');
+                row.className = 'flex justify-between items-center p-2 border-b';
+                row.innerHTML = `<span>${sieve.label} (${sieve.size ?? 'سینی'} µm)</span>`;
+                if (sieve.label !== 'سینی') {
+                    const removeBtn = document.createElement('button');
+                    removeBtn.textContent = 'حذف';
+                    removeBtn.className = 'text-red-500 hover:text-red-700 font-semibold';
+                    removeBtn.onclick = () => {
+                        sieves = sieves.filter(s => s.label !== sieve.label);
+                        renderModalSieveList();
+                        renderSieveInputs();
+                    };
+                    row.appendChild(removeBtn);
+                }
+                modalSieveList.appendChild(row);
+            });
+        }
+        
+        manageSievesBtn.addEventListener('click', () => {
+            renderModalSieveList();
+            sieveModal.classList.add('active');
+        });
+
+        closeModalBtn.addEventListener('click', () => {
+            sieveModal.classList.remove('active');
+        });
+        
+        addSieveBtn.addEventListener('click', () => {
+            const label = newSieveLabelInput.value.trim();
+            const size = newSieveSizeInput.value.trim();
+            if (!label) {
+                alert('لطفاً نام سرند را وارد کنید.');
+                return;
+            }
+            const sizeValue = size === '' ? null : getFloat(size);
+            if (sieves.find(s => s.label === label)) {
+                alert('سرندی با این نام از قبل وجود دارد.');
+                return;
+            }
+            sieves.push({ label, size: sizeValue });
+            newSieveLabelInput.value = '';
+            newSieveSizeInput.value = '';
+            renderModalSieveList();
+            renderSieveInputs();
+        });
+
+        // --- EVENT LISTENERS ---
+        calculateBtn.addEventListener('click', performAnalysis);
+        resetBtn.addEventListener('click', resetProgram);
+        exportBtn.addEventListener('click', exportToExcel);
+
+        // --- INITIALIZE ---
+        window.onload = () => {
+            renderSieveInputs();
+        };
+    </script>
+
 </body>
 </html>
 
