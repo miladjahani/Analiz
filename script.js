@@ -475,11 +475,15 @@ async function exportToPDF() {
     const doc = new jsPDF();
 
     // Helper function to reshape Persian text if the library is loaded
-    const reshape = (text) => {
+    const reshape = (text, reverse = false) => {
+        let reshapedText = String(text);
         if (typeof arabicReshaper !== 'undefined') {
-            return arabicReshaper.reshape(String(text));
+            reshapedText = arabicReshaper.reshape(reshapedText);
         }
-        return text; // Fallback
+        if (reverse) {
+            reshapedText = reshapedText.split('').reverse().join('');
+        }
+        return reshapedText;
     };
 
     try {
@@ -510,7 +514,7 @@ async function exportToPDF() {
     // 3. Add Content
     doc.setR2L(true); // Enable Right-to-Left mode
     doc.setFontSize(22);
-    doc.text(reshape('آنالیز سرندی'), 105, 20, { align: 'center' });
+    doc.text(reshape('آنالیز سرندی', true), 105, 20, { align: 'center' });
 
     const jalaliDate = reshape(`تاریخ گزارش: ${moment().locale('fa').format('YYYY/MM/DD')}`);
     doc.setFontSize(10);
@@ -527,7 +531,7 @@ async function exportToPDF() {
     doc.addImage(weightChartImg, 'JPEG', 15, 130, 180, 80);
 
     // 5. Add Summary Table
-    const summaryHead = [[reshape('مقدار'), reshape('پارامتر')]];
+    const summaryHead = [[reshape('مقدار', true), reshape('پارامتر', true)]];
     const summaryBody = [
         [latestAnalysis.dValues.d10?.toFixed(2) ?? 'N/A', reshape('D10 (µm)')],
         [latestAnalysis.dValues.d30?.toFixed(2) ?? 'N/A', reshape('D30 (µm)')],
@@ -549,16 +553,23 @@ async function exportToPDF() {
 
     // 6. Add Raw Data Table on a new page
     doc.addPage();
-    doc.text(reshape('داده‌های خام تحلیل'), 105, 20, { align: 'center' });
+    doc.text(reshape('داده‌های خام تحلیل', true), 105, 20, { align: 'center' });
 
-    const rawDataHead = [[reshape('درصد عبوری'), reshape('درصد تجمعی نگه‌داری'), reshape('درصد نگه‌داری'), reshape('وزن (گرم)'), reshape('اندازه (میکرون)'), reshape('سرند')]];
+    const rawDataHead = [[
+        reshape('درصد عبوری', true),
+        reshape('درصد تجمعی نگه‌داری', true),
+        reshape('درصد نگه‌داری', true),
+        reshape('وزن (گرم)', true),
+        reshape('اندازه (میکرون)', true),
+        reshape('سرند', true)
+    ]];
     const rawDataBody = latestAnalysis.sieves.map((s, i) => [
         `${latestAnalysis.percentPassing[i].toFixed(2)}%`,
         `${latestAnalysis.cumRetained[i].toFixed(2)}%`,
         `${latestAnalysis.percents[i].toFixed(2)}%`,
         latestAnalysis.weights[i].toFixed(2),
-        s.size ?? reshape('سینی'),
-        reshape(s.label)
+        s.size ?? reshape('سینی', true),
+        reshape(s.label, true)
     ]);
 
     doc.autoTable({
