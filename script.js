@@ -445,6 +445,24 @@ fab.addEventListener('click', () => {
     fabOptions.classList.toggle('active');
 });
 
+fabOptions.addEventListener('click', (event) => {
+    const target = event.target.closest('.fab-option');
+    if (!target) return;
+
+    const action = target.id;
+
+    if (action === 'export-excel-btn') {
+        exportToExcel();
+    } else if (action === 'export-pdf-fa-btn') {
+        exportToPDF();
+    } else if (action === 'export-pdf-en-btn') {
+        exportToPDF_EN();
+    }
+
+    // Hide the options menu after a selection is made
+    fabOptions.classList.remove('active');
+});
+
 // --- PDF EXPORT ---
 // Helper function to reverse Persian text for jsPDF
 function reverseText(text) {
@@ -618,11 +636,6 @@ async function exportToPDF_EN() {
     // 5. Save PDF
     doc.save('Sieve-Analysis-Report.pdf');
 }
-
-
-exportExcelBtn.addEventListener('click', exportToExcel);
-exportPdfFaBtn.addEventListener('click', exportToPDF);
-exportPdfEnBtn.addEventListener('click', exportToPDF_EN);
 
 
 // --- INITIALIZE ---
