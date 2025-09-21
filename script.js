@@ -29,6 +29,7 @@ const PREDEFINED_SIEVES = {
     ]
 };
 let sieves = [...PREDEFINED_SIEVES.default];
+let currentSieveSet = 'default';
 
 const TARGET_VALUES = { d10: 10, d30: 30, d50: 50, d60: 60, d80: 80 };
 let latestAnalysis = null;
@@ -42,10 +43,14 @@ const resetBtn = document.getElementById('reset-btn');
 const resultsContainer = document.getElementById('results-container');
 const welcomeContainer = document.getElementById('welcome-container');
 const summaryStatsContainer = document.getElementById('summary-stats');
+const analysisHelpContainer = document.getElementById('analysis-help-container');
+const generalAnalysisContainer = document.getElementById('general-analysis');
+const specificAnalysisContainer = document.getElementById('specific-analysis');
 const fab = document.getElementById('fab');
 const fabOptions = document.getElementById('fab-options');
 const exportExcelBtn = document.getElementById('export-excel-btn');
-const exportPdfBtn = document.getElementById('export-pdf-btn');
+const exportPdfFaBtn = document.getElementById('export-pdf-fa-btn');
+const exportPdfEnBtn = document.getElementById('export-pdf-en-btn');
 
 // Predefined data buttons
 const loadCrusherBtn = document.getElementById('load-crusher-btn');
@@ -87,6 +92,7 @@ function renderSieveInputs() {
 }
 
 function loadSieveSet(setName) {
+    currentSieveSet = setName;
     sieves = [...PREDEFINED_SIEVES[setName]];
     resetProgram();
 }
@@ -162,6 +168,39 @@ function performAnalysis() {
     };
 
     displayResults();
+}
+
+function displayAnalysisHelp() {
+    const { Cu, Cc } = latestAnalysis;
+
+    generalAnalysisContainer.innerHTML = `
+        <p><strong>ضریب یکنواختی (Cu):</strong> این ضریب نشان‌دهنده بازه توزیع اندازه ذرات است. مقدار Cu برابر با <strong>${Cu?.toFixed(2) ?? 'N/A'}</strong> است.</p>
+        <ul class="list-disc list-inside pr-4">
+            <li><strong>Cu > 4:</strong> خاک خوب دانه‌بندی شده (Well-graded).</li>
+            <li><strong>Cu < 4:</strong> خاک بد دانه‌بندی شده (Poorly-graded).</li>
+        </ul>
+        <p><strong>ضریب انحنا (Cc):</strong> این ضریب شکل منحنی توزیع ذرات را نشان می‌دهد. مقدار Cc برابر با <strong>${Cc?.toFixed(2) ?? 'N/A'}</strong> است.</p>
+        <ul class="list-disc list-inside pr-4">
+            <li><strong>1 < Cc < 3:</strong> منحنی توزیع ذرات نرم و پیوسته است (برای خاک خوب دانه‌بندی شده).</li>
+            <li><strong>Cc < 1 or Cc > 3:</strong> نشان‌دهنده کمبود ذرات در یک یا چند بازه اندازه‌ای است.</li>
+        </ul>
+    `;
+
+    let specificText = '';
+    if (currentSieveSet === 'crusher') {
+        specificText = '<strong>تحلیل نمونه سنگ شکن:</strong> این نمونه معرف خوراک ورودی به سنگ‌شکن‌ها یا محصول خروجی آن‌هاست. توزیع گسترده ذرات (Cu بالا) معمولاً مطلوب است تا فضای خالی بین ذرات بزرگ توسط ذرات کوچکتر پر شود و تراکم هیپ افزایش یابد.';
+    } else if (currentSieveSet === 'clay') {
+        specificText = '<strong>تحلیل نمونه رس:</strong> این نمونه دارای درصد بالایی از ذرات بسیار ریز است. مقادیر بالای ذرات ریز (مثلاً زیر 75 میکرون) می‌تواند نفوذپذیری هیپ را به شدت کاهش داده و باعث ایجاد مشکلاتی مانند کانالیزه شدن محلول و کاهش راندمان لیچینگ شود.';
+    }
+
+    if (specificText) {
+        specificAnalysisContainer.innerHTML = specificText;
+        specificAnalysisContainer.classList.remove('hidden');
+    } else {
+        specificAnalysisContainer.classList.add('hidden');
+    }
+
+    analysisHelpContainer.classList.remove('hidden');
 }
 
 function displayResults() {
@@ -290,17 +329,20 @@ async function exportToExcel() {
     });
 
     const dataRows = latestAnalysis.sieves.length + 1;
+    // The last row is the pan, which has a null size and shouldn't be in the chart.
+    const chartDataRows = dataRows - 1;
+
     chart.addSeries({
         name: 'درصد عبوری',
         x: {
             source: 'B', // Sieve Size column
             from: 2,
-            to: dataRows,
+            to: chartDataRows,
         },
         y: {
             source: 'F', // Percent Passing column
             from: 2,
-            to: dataRows,
+            to: chartDataRows,
         },
     });
 
@@ -508,8 +550,80 @@ async function exportToPDF() {
     doc.save('آنالیز-سرندی.pdf');
 }
 
+async function exportToPDF_EN() {
+    if (!latestAnalysis) {
+        alert('Please run the analysis first.');
+        return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    // 1. Add Content (No custom font needed)
+    doc.setFontSize(22);
+    doc.text('Sieve Analysis Report', 105, 20, { align: 'center' });
+
+    doc.setFontSize(12);
+    doc.text(`Total Sample Weight: ${latestAnalysis.totalWeight.toFixed(2)} g`, 105, 30, { align: 'center' });
+
+    // 2. Add Charts as Images
+    const passingChartImg = passingChartInstance.canvas.toDataURL('image/jpeg', 0.8);
+    const weightChartImg = weightChartInstance.canvas.toDataURL('image/jpeg', 0.8);
+
+    doc.addImage(passingChartImg, 'JPEG', 15, 40, 180, 80);
+    doc.addImage(weightChartImg, 'JPEG', 15, 125, 180, 80);
+
+    // 3. Add Summary Table
+    const summaryHead = [['Parameter', 'Value']];
+    const summaryBody = [
+        ['D10 (µm)', latestAnalysis.dValues.d10?.toFixed(2) ?? 'N/A'],
+        ['D30 (µm)', latestAnalysis.dValues.d30?.toFixed(2) ?? 'N/A'],
+        ['D50 (µm)', latestAnalysis.dValues.d50?.toFixed(2) ?? 'N/A'],
+        ['D60 (µm)', latestAnalysis.dValues.d60?.toFixed(2) ?? 'N/A'],
+        ['D80 (µm)', latestAnalysis.dValues.d80?.toFixed(2) ?? 'N/A'],
+        ['Cu (Uniformity Coefficient)', latestAnalysis.Cu?.toFixed(2) ?? 'N/A'],
+        ['Cc (Curvature Coefficient)', latestAnalysis.Cc?.toFixed(2) ?? 'N/A'],
+    ];
+
+    doc.autoTable({
+        startY: 210,
+        head: summaryHead,
+        body: summaryBody,
+        theme: 'grid',
+        headStyles: { fillColor: [103, 58, 183] }, // Purple header
+    });
+
+    // 4. Add Raw Data Table on a new page
+    doc.addPage();
+    doc.text('Raw Analysis Data', 105, 20, { align: 'center' });
+
+    const rawDataHead = [['Sieve', 'Size (µm)', 'Weight (g)', 'Retained %', 'Cum. Retained %', 'Passing %']];
+    const rawDataBody = latestAnalysis.sieves.map((s, i) => [
+        s.label,
+        s.size ?? 'Pan',
+        latestAnalysis.weights[i].toFixed(2),
+        `${latestAnalysis.percents[i].toFixed(2)}%`,
+        `${latestAnalysis.cumRetained[i].toFixed(2)}%`,
+        `${latestAnalysis.percentPassing[i].toFixed(2)}%`,
+    ]);
+
+    doc.autoTable({
+        startY: 30,
+        head: rawDataHead,
+        body: rawDataBody,
+        theme: 'striped',
+        headStyles: { fillColor: [103, 58, 183] },
+    });
+
+    // 5. Save PDF
+    doc.save('Sieve-Analysis-Report.pdf');
+}
+
+
 exportExcelBtn.addEventListener('click', exportToExcel);
-exportPdfBtn.addEventListener('click', exportToPDF);
+exportPdfFaBtn.addEventListener('click', exportToPDF);
+exportPdfEnBtn.addEventListener('click', exportToPDF_EN);
+
 
 // --- INITIALIZE ---
 window.onload = () => {
