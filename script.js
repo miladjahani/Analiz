@@ -304,6 +304,7 @@ async function exportToExcel() {
             { header: 'مقدار', key: 'value', width: 20, style: { numFmt: '#,##0.00' } }
         ];
         const summaryData = [
+            { param: 'تاریخ گزارش', value: moment().locale('fa').format('YYYY/MM/DD') },
             { param: 'D10 (µm)', value: latestAnalysis.dValues.d10 },
             { param: 'D30 (µm)', value: latestAnalysis.dValues.d30 },
             { param: 'D50 (µm)', value: latestAnalysis.dValues.d50 },
@@ -316,7 +317,8 @@ async function exportToExcel() {
         summarySheet.addRows(summaryData);
 
         // --- RAW DATA SHEET ---
-        const dataSheet = workbook.addWorksheet('داده‌های خام');
+        const dataSheetName = 'داده‌های خام';
+        const dataSheet = workbook.addWorksheet(dataSheetName);
         dataSheet.views = [{ rtl: true }];
         dataSheet.columns = [
             { header: 'سرند', key: 'label', width: 15 },
@@ -337,6 +339,41 @@ async function exportToExcel() {
                 percentPassing: latestAnalysis.percentPassing[i]
             });
         });
+
+        // --- CHART (Resilient Implementation) ---
+        try {
+            // This block adds the chart but won't stop the export if it fails.
+            const chartDataRows = latestAnalysis.sieves.filter(s => s.size !== null).length + 1;
+
+            if (chartDataRows > 1) { // Ensure there is data to chart
+                const chartSheet = workbook.getWorksheet(dataSheetName);
+                const chart = chartSheet.addChart({
+                    type: 'scatter',
+                    style: 'smoothMarker',
+                    title: 'نمودار توزیع دانه‌بندی',
+                    xTitle: 'اندازه سرند (میکرون) - مقیاس لگاریتمی',
+                    yTitle: 'درصد عبوری (%)',
+                    legend: { position: 'none' },
+                });
+
+                chart.addSeries({
+                    name: 'درصد عبوری',
+                    x: { source: `${dataSheetName}!$B$2:$B$${chartDataRows}` },
+                    y: { source: `${dataSheetName}!$F$2:$F$${chartDataRows}` },
+                });
+
+                chart.primaryAxis.logBase = 10;
+
+                chart.anchor = {
+                    from: { col: 7.5, row: 2 },
+                    to: { col: 15, row: 20 },
+                };
+            }
+        } catch (chartError) {
+            console.error("Could not add chart to Excel file, but continuing with data export.", chartError);
+            alert("توجه: نمودار به فایل اکسل اضافه نشد زیرا خطایی رخ داد.");
+        }
+
 
         // --- GENERATE AND DOWNLOAD FILE ---
         const buffer = await workbook.xlsx.writeBuffer();
@@ -475,15 +512,19 @@ async function exportToPDF() {
     doc.setFontSize(22);
     doc.text(reshape('آنالیز سرندی'), 105, 20, { align: 'center' });
 
+    const jalaliDate = reshape(`تاریخ گزارش: ${moment().locale('fa').format('YYYY/MM/DD')}`);
+    doc.setFontSize(10);
+    doc.text(jalaliDate, 105, 28, { align: 'center' });
+
     doc.setFontSize(12);
-    doc.text(reshape(`مجموع وزن کل: ${latestAnalysis.totalWeight.toFixed(2)} گرم`), 105, 30, { align: 'center' });
+    doc.text(reshape(`مجموع وزن کل: ${latestAnalysis.totalWeight.toFixed(2)} گرم`), 105, 38, { align: 'center' });
 
     // 4. Add Charts as Images
     const passingChartImg = passingChartInstance.canvas.toDataURL('image/jpeg', 0.8);
     const weightChartImg = weightChartInstance.canvas.toDataURL('image/jpeg', 0.8);
 
-    doc.addImage(passingChartImg, 'JPEG', 15, 40, 180, 80);
-    doc.addImage(weightChartImg, 'JPEG', 15, 125, 180, 80);
+    doc.addImage(passingChartImg, 'JPEG', 15, 45, 180, 80);
+    doc.addImage(weightChartImg, 'JPEG', 15, 130, 180, 80);
 
     // 5. Add Summary Table
     const summaryHead = [[reshape('مقدار'), reshape('پارامتر')]];
@@ -498,12 +539,12 @@ async function exportToPDF() {
     ];
 
     doc.autoTable({
-        startY: 210,
+        startY: 215,
         head: summaryHead,
         body: summaryBody,
         theme: 'grid',
-        styles: { font: 'Vazirmatn', halign: 'center' },
-        headStyles: { fillColor: [103, 58, 183] }, // Purple header
+        styles: { font: 'Vazirmatn', halign: 'right' },
+        headStyles: { font: 'Vazirmatn', halign: 'right', fillColor: [103, 58, 183] },
     });
 
     // 6. Add Raw Data Table on a new page
@@ -525,8 +566,8 @@ async function exportToPDF() {
         head: rawDataHead,
         body: rawDataBody,
         theme: 'striped',
-        styles: { font: 'Vazirmatn', halign: 'center' },
-        headStyles: { fillColor: [103, 58, 183] },
+        styles: { font: 'Vazirmatn', halign: 'right' },
+        headStyles: { font: 'Vazirmatn', halign: 'right', fillColor: [103, 58, 183] },
     });
 
     // 7. Save PDF
@@ -546,15 +587,19 @@ async function exportToPDF_EN() {
     doc.setFontSize(22);
     doc.text('Sieve Analysis Report', 105, 20, { align: 'center' });
 
+    doc.setFontSize(10);
+    doc.text(`Report Date: ${moment().format('YYYY-MM-DD')}`, 105, 28, { align: 'center' });
+    doc.text(`(Jalali: ${moment().locale('fa').format('YYYY/MM/DD')})`, 105, 34, { align: 'center' });
+
     doc.setFontSize(12);
-    doc.text(`Total Sample Weight: ${latestAnalysis.totalWeight.toFixed(2)} g`, 105, 30, { align: 'center' });
+    doc.text(`Total Sample Weight: ${latestAnalysis.totalWeight.toFixed(2)} g`, 105, 42, { align: 'center' });
 
     // 2. Add Charts as Images
     const passingChartImg = passingChartInstance.canvas.toDataURL('image/jpeg', 0.8);
     const weightChartImg = weightChartInstance.canvas.toDataURL('image/jpeg', 0.8);
 
-    doc.addImage(passingChartImg, 'JPEG', 15, 40, 180, 80);
-    doc.addImage(weightChartImg, 'JPEG', 15, 125, 180, 80);
+    doc.addImage(passingChartImg, 'JPEG', 15, 50, 180, 80);
+    doc.addImage(weightChartImg, 'JPEG', 15, 135, 180, 80);
 
     // 3. Add Summary Table
     const summaryHead = [['Parameter', 'Value']];
@@ -569,7 +614,7 @@ async function exportToPDF_EN() {
     ];
 
     doc.autoTable({
-        startY: 210,
+        startY: 220,
         head: summaryHead,
         body: summaryBody,
         theme: 'grid',
