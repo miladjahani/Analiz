@@ -341,12 +341,7 @@ async function exportToExcel() {
         // --- GENERATE AND DOWNLOAD FILE ---
         const buffer = await workbook.xlsx.writeBuffer();
         const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = 'آنالیز-سرندی.xlsx';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        saveAs(blob, 'آنالیز-سرندی.xlsx');
 
     } catch (error) {
         console.error("Error exporting to Excel:", error);
