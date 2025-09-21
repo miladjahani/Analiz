@@ -279,110 +279,79 @@ function resetProgram() {
     fabOptions.classList.remove('active');
 }
 
-// --- EXCEL EXPORT (with Charts) ---
+// --- EXCEL EXPORT ---
 async function exportToExcel() {
     if (!latestAnalysis) {
         alert('ابتدا تحلیل را انجام دهید.');
         return;
     }
 
-    const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'Sieve Analysis Web App';
-    workbook.created = new Date();
-    workbook.views = [{
-        x: 0, y: 0, width: 10000, height: 20000,
-        firstSheet: 0, activeTab: 0, visibility: 'visible',
-        rtl: true // Set Right-to-Left view for the whole workbook
-    }];
+    try {
+        const workbook = new ExcelJS.Workbook();
+        workbook.creator = 'Sieve Analysis Web App';
+        workbook.created = new Date();
+        workbook.views = [{
+            x: 0, y: 0, width: 10000, height: 20000,
+            firstSheet: 0, activeTab: 0, visibility: 'visible',
+            rtl: true
+        }];
 
-    // --- RAW DATA SHEET ---
-    const dataSheet = workbook.addWorksheet('داده‌های خام و نمودار');
-    dataSheet.columns = [
-        { header: 'سرند', key: 'label', width: 15 },
-        { header: 'اندازه (میکرون)', key: 'size', width: 20 },
-        { header: 'وزن (گرم)', key: 'weight', width: 15, style: { numFmt: '#,##0.00' } },
-        { header: 'درصد نگه‌داری', key: 'percent', width: 18, style: { numFmt: '0.00"%"' } },
-        { header: 'درصد تجمعی نگه‌داری', key: 'cumRetained', width: 25, style: { numFmt: '0.00"%"' } },
-        { header: 'درصد عبوری', key: 'percentPassing', width: 18, style: { numFmt: '0.00"%"' } },
-    ];
+        // --- SUMMARY SHEET ---
+        const summarySheet = workbook.addWorksheet('خلاصه نتایج');
+        summarySheet.views = [{ rtl: true }];
+        summarySheet.columns = [
+            { header: 'پارامتر', key: 'param', width: 25 },
+            { header: 'مقدار', key: 'value', width: 20, style: { numFmt: '#,##0.00' } }
+        ];
+        const summaryData = [
+            { param: 'D10 (µm)', value: latestAnalysis.dValues.d10 },
+            { param: 'D30 (µm)', value: latestAnalysis.dValues.d30 },
+            { param: 'D50 (µm)', value: latestAnalysis.dValues.d50 },
+            { param: 'D60 (µm)', value: latestAnalysis.dValues.d60 },
+            { param: 'D80 (µm)', value: latestAnalysis.dValues.d80 },
+            { param: 'Cu (ضریب یکنواختی)', value: latestAnalysis.Cu },
+            { param: 'Cc (ضریب انحنا)', value: latestAnalysis.Cc },
+            { param: 'مجموع وزن (گرم)', value: latestAnalysis.totalWeight },
+        ];
+        summarySheet.addRows(summaryData);
 
-    // Add data rows
-    latestAnalysis.sieves.forEach((sieve, i) => {
-        dataSheet.addRow({
-            label: sieve.label,
-            size: sieve.size,
-            weight: latestAnalysis.weights[i],
-            percent: latestAnalysis.percents[i],
-            cumRetained: latestAnalysis.cumRetained[i],
-            percentPassing: latestAnalysis.percentPassing[i]
+        // --- RAW DATA SHEET ---
+        const dataSheet = workbook.addWorksheet('داده‌های خام');
+        dataSheet.views = [{ rtl: true }];
+        dataSheet.columns = [
+            { header: 'سرند', key: 'label', width: 15 },
+            { header: 'اندازه (میکرون)', key: 'size', width: 20 },
+            { header: 'وزن (گرم)', key: 'weight', width: 15, style: { numFmt: '#,##0.00' } },
+            { header: 'درصد نگه‌داری', key: 'percent', width: 18, style: { numFmt: '0.00"%"' } },
+            { header: 'درصد تجمعی نگه‌داری', key: 'cumRetained', width: 25, style: { numFmt: '0.00"%"' } },
+            { header: 'درصد عبوری', key: 'percentPassing', width: 18, style: { numFmt: '0.00"%"' } },
+        ];
+
+        latestAnalysis.sieves.forEach((sieve, i) => {
+            dataSheet.addRow({
+                label: sieve.label,
+                size: sieve.size,
+                weight: latestAnalysis.weights[i],
+                percent: latestAnalysis.percents[i],
+                cumRetained: latestAnalysis.cumRetained[i],
+                percentPassing: latestAnalysis.percentPassing[i]
+            });
         });
-    });
 
-    // --- CHART ---
-    const chart = dataSheet.addChart({
-        type: 'scatter',
-        style: 'smoothMarker',
-        title: 'نمودار توزیع دانه‌بندی',
-        xTitle: 'اندازه سرند (میکرون) - مقیاس لگاریتمی',
-        yTitle: 'درصد عبوری (%)',
-        legend: { position: 'none' },
-    });
+        // --- GENERATE AND DOWNLOAD FILE ---
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'آنالیز-سرندی.xlsx';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
 
-    const dataRows = latestAnalysis.sieves.length + 1;
-    // The last row is the pan, which has a null size and shouldn't be in the chart.
-    const chartDataRows = dataRows - 1;
-
-    chart.addSeries({
-        name: 'درصد عبوری',
-        x: {
-            source: 'B', // Sieve Size column
-            from: 2,
-            to: chartDataRows,
-        },
-        y: {
-            source: 'F', // Percent Passing column
-            from: 2,
-            to: chartDataRows,
-        },
-    });
-
-    // Set logarithmic scale for X-axis
-    chart.primaryAxis.logBase = 10;
-
-    // Position the chart
-    chart.anchor = {
-        from: { col: 7.5, row: 2 },
-        to: { col: 15, row: 20 },
-    };
-
-    // --- SUMMARY SHEET ---
-    const summarySheet = workbook.addWorksheet('خلاصه نتایج');
-    summarySheet.views = [{ rtl: true }]; // RTL for this sheet
-    summarySheet.columns = [
-        { header: 'پارامتر', key: 'param', width: 20 },
-        { header: 'مقدار', key: 'value', width: 20, style: { numFmt: '#,##0.00' } }
-    ];
-    const summaryData = [
-        { param: 'D10 (µm)', value: latestAnalysis.dValues.d10 },
-        { param: 'D30 (µm)', value: latestAnalysis.dValues.d30 },
-        { param: 'D50 (µm)', value: latestAnalysis.dValues.d50 },
-        { param: 'D60 (µm)', value: latestAnalysis.dValues.d60 },
-        { param: 'D80 (µm)', value: latestAnalysis.dValues.d80 },
-        { param: 'Cu (ضریب یکنواختی)', value: latestAnalysis.Cu },
-        { param: 'Cc (ضریب انحنا)', value: latestAnalysis.Cc },
-        { param: 'مجموع وزن (گرم)', value: latestAnalysis.totalWeight },
-    ];
-    summarySheet.addRows(summaryData);
-
-    // --- GENERATE AND DOWNLOAD FILE ---
-    const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = ' آنالیز-سرندی.xlsx';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    } catch (error) {
+        console.error("Error exporting to Excel:", error);
+        alert("متاسفانه در ایجاد فایل اکسل خطایی رخ داد. لطفا دوباره امتحان کنید.");
+    }
 }
 
 // --- MODAL LOGIC ---
@@ -464,13 +433,6 @@ fabOptions.addEventListener('click', (event) => {
 });
 
 // --- PDF EXPORT ---
-// Helper function to reverse Persian text for jsPDF
-function reverseText(text) {
-    // This is a simple reversal, which might not be perfect for all complex scripts,
-    // but is often necessary for libraries that don't fully support RTL.
-    return text.split('').reverse().join('');
-}
-
 async function exportToPDF() {
     if (!latestAnalysis) {
         alert('ابتدا تحلیل را انجام دهید.');
@@ -479,6 +441,14 @@ async function exportToPDF() {
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
+
+    // Helper function to reshape Persian text if the library is loaded
+    const reshape = (text) => {
+        if (typeof arabicReshaper !== 'undefined') {
+            return arabicReshaper.reshape(String(text));
+        }
+        return text; // Fallback
+    };
 
     try {
         // 1. Fetch Vazirmatn font
@@ -508,10 +478,10 @@ async function exportToPDF() {
     // 3. Add Content
     doc.setR2L(true); // Enable Right-to-Left mode
     doc.setFontSize(22);
-    doc.text('آنالیز سرندی', 105, 20, { align: 'center' });
+    doc.text(reshape('آنالیز سرندی'), 105, 20, { align: 'center' });
 
     doc.setFontSize(12);
-    doc.text(`مجموع وزن کل: ${latestAnalysis.totalWeight.toFixed(2)} گرم`, 105, 30, { align: 'center' });
+    doc.text(reshape(`مجموع وزن کل: ${latestAnalysis.totalWeight.toFixed(2)} گرم`), 105, 30, { align: 'center' });
 
     // 4. Add Charts as Images
     const passingChartImg = passingChartInstance.canvas.toDataURL('image/jpeg', 0.8);
@@ -521,15 +491,15 @@ async function exportToPDF() {
     doc.addImage(weightChartImg, 'JPEG', 15, 125, 180, 80);
 
     // 5. Add Summary Table
-    const summaryHead = [['مقدار', 'پارامتر']];
+    const summaryHead = [[reshape('مقدار'), reshape('پارامتر')]];
     const summaryBody = [
-        [latestAnalysis.dValues.d10?.toFixed(2) ?? 'N/A', 'D10 (µm)'],
-        [latestAnalysis.dValues.d30?.toFixed(2) ?? 'N/A', 'D30 (µm)'],
-        [latestAnalysis.dValues.d50?.toFixed(2) ?? 'N/A', 'D50 (µm)'],
-        [latestAnalysis.dValues.d60?.toFixed(2) ?? 'N/A', 'D60 (µm)'],
-        [latestAnalysis.dValues.d80?.toFixed(2) ?? 'N/A', 'D80 (µm)'],
-        [latestAnalysis.Cu?.toFixed(2) ?? 'N/A', 'Cu (ضریب یکنواختی)'],
-        [latestAnalysis.Cc?.toFixed(2) ?? 'N/A', 'Cc (ضریب انحنا)'],
+        [latestAnalysis.dValues.d10?.toFixed(2) ?? 'N/A', reshape('D10 (µm)')],
+        [latestAnalysis.dValues.d30?.toFixed(2) ?? 'N/A', reshape('D30 (µm)')],
+        [latestAnalysis.dValues.d50?.toFixed(2) ?? 'N/A', reshape('D50 (µm)')],
+        [latestAnalysis.dValues.d60?.toFixed(2) ?? 'N/A', reshape('D60 (µm)')],
+        [latestAnalysis.dValues.d80?.toFixed(2) ?? 'N/A', reshape('D80 (µm)')],
+        [latestAnalysis.Cu?.toFixed(2) ?? 'N/A', reshape('Cu (ضریب یکنواختی)')],
+        [latestAnalysis.Cc?.toFixed(2) ?? 'N/A', reshape('Cc (ضریب انحنا)')],
     ];
 
     doc.autoTable({
@@ -543,16 +513,16 @@ async function exportToPDF() {
 
     // 6. Add Raw Data Table on a new page
     doc.addPage();
-    doc.text('داده‌های خام تحلیل', 105, 20, { align: 'center' });
+    doc.text(reshape('داده‌های خام تحلیل'), 105, 20, { align: 'center' });
 
-    const rawDataHead = [['درصد عبوری', 'درصد تجمعی نگه‌داری', 'درصد نگه‌داری', 'وزن (گرم)', 'اندازه (میکرون)', 'سرند']];
+    const rawDataHead = [[reshape('درصد عبوری'), reshape('درصد تجمعی نگه‌داری'), reshape('درصد نگه‌داری'), reshape('وزن (گرم)'), reshape('اندازه (میکرون)'), reshape('سرند')]];
     const rawDataBody = latestAnalysis.sieves.map((s, i) => [
         `${latestAnalysis.percentPassing[i].toFixed(2)}%`,
         `${latestAnalysis.cumRetained[i].toFixed(2)}%`,
         `${latestAnalysis.percents[i].toFixed(2)}%`,
         latestAnalysis.weights[i].toFixed(2),
-        s.size ?? 'سینی',
-        s.label
+        s.size ?? reshape('سینی'),
+        reshape(s.label)
     ]);
 
     doc.autoTable({
@@ -615,9 +585,16 @@ async function exportToPDF_EN() {
     doc.addPage();
     doc.text('Raw Analysis Data', 105, 20, { align: 'center' });
 
+    const enLabelMap = {
+        'سرند 15': 'Sieve 15', '10 سانت': '10 cm', '7.5 سانت': '7.5 cm', '2 اینچ': '2 inch', '1اینچ': '1 inch', '3/4 اینچ': '3/4 inch', '1/2 اینچ': '1/2 inch', '4 مش': '4 mesh', '8 مش': '8 mesh', '16 مش': '16 mesh', '30 مش': '30 mesh', '100 مش': '100 mesh', 'سینی': 'Pan',
+        '6 اینچ': '6 inch', '4 اینچ': '4 inch', '3/8 اینچ': '3/8 inch', '10 مش': '10 mesh', '40 مش': '40 mesh', '200 مش': '200 mesh',
+        '20 مش': '20 mesh', '60 مش': '60 mesh', '80 مش': '80 mesh', '120 مش': '120 mesh', '140 مش': '140 mesh', '170 مش': '170 mesh', '270 مش': '270 mesh', '400 مش': '400 mesh', '500 مش': '500 mesh'
+    };
+    const getEnLabel = (faLabel) => enLabelMap[faLabel] || faLabel;
+
     const rawDataHead = [['Sieve', 'Size (µm)', 'Weight (g)', 'Retained %', 'Cum. Retained %', 'Passing %']];
     const rawDataBody = latestAnalysis.sieves.map((s, i) => [
-        s.label,
+        getEnLabel(s.label),
         s.size ?? 'Pan',
         latestAnalysis.weights[i].toFixed(2),
         `${latestAnalysis.percents[i].toFixed(2)}%`,
