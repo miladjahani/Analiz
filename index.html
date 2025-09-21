@@ -164,21 +164,36 @@
         }
 
         function linearInterpolation(target, points) {
+            // Log-linear interpolation is standard for particle size distribution curves.
             if (!points || points.length === 0) return null;
             points.sort((a,b) => b[0] - a[0]); // Sort by passing percent descending
+
+            // Handle edge cases: if target is outside the data range, return the boundary value.
             if (target >= points[0][0]) return points[0][1];
             if (target <= points[points.length - 1][0]) return points[points.length - 1][1];
 
             for (let i = 0; i < points.length - 1; i++) {
                 const [p_high, d_high] = points[i];
                 const [p_low, d_low] = points[i + 1];
+
+                // Find the interval where the target percentage lies.
                 if (p_high >= target && target >= p_low) {
-                    if (p_high - p_low === 0) return d_high;
-                    const fraction = (p_high - target) / (p_high - p_low);
-                    return d_high + (d_low - d_high) * fraction;
+                    if (p_high - p_low === 0) return d_high; // Avoid division by zero.
+
+                    // Convert sieve sizes to log scale for interpolation.
+                    const log_d_high = Math.log(d_high);
+                    const log_d_low = Math.log(d_low);
+
+                    // Perform linear interpolation on the percentage and log(size).
+                    // Formula: y = y1 + (x - x1) * (y2 - y1) / (x2 - x1)
+                    // Here, y = log(d), x = percentage
+                    const log_d_target = log_d_low + (target - p_low) * (log_d_high - log_d_low) / (p_high - p_low);
+
+                    // Convert the result back from log scale to get the actual size.
+                    return Math.exp(log_d_target);
                 }
             }
-            return null;
+            return null; // Should not be reached if logic is correct
         }
 
         function performAnalysis() {
