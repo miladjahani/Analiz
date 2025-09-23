@@ -31,9 +31,10 @@ const PREDEFINED_SIEVES = {
 let sieves = [...PREDEFINED_SIEVES.default];
 let currentSieveSet = 'default';
 
-const TARGET_VALUES = { d10: 10, d30: 30, d50: 50, d60: 60, d80: 80 };
+const TARGET_VALUES = { d10: 10, d16: 16, d30: 30, d50: 50, d60: 60, d84: 84 };
 let latestAnalysis = null;
 let passingChartInstance = null;
+let retainedChartInstance = null; // Add this line
 let weightChartInstance = null;
 
 // --- DOM ELEMENTS ---
@@ -163,34 +164,84 @@ function performAnalysis() {
         Cc = Math.pow(dValues.d30, 2) / (dValues.d10 * dValues.d60);
     }
 
+    const std_dev_geotechnical = (dValues.d16 && dValues.d84) ? (dValues.d84 - dValues.d16) / 2 : null;
+
+    // Create a temporary data structure for fineness modulus calculation
+    const fineness_modulus_data = sieves.map((sieve, i) => ({
+        size: sieve.size,
+        cumulative_retained: cumRetained[i]
+    }));
+    const fineness_modulus = (currentSieveSet === 'concrete') ? calculateFinenessModulusClientSide(fineness_modulus_data) : null;
+
     latestAnalysis = {
-        sieves, weights, percents, cumRetained, percentPassing, dValues, Cu, Cc, totalWeight
+        sieves, weights, percents, cumRetained, percentPassing, dValues, Cu, Cc, totalWeight,
+        std_dev_geotechnical, fineness_modulus
     };
 
     displayResults();
+    displayAnalysisHelp();
+}
+
+/**
+ * Calculates the Fineness Modulus (FM) for concrete aggregate analysis.
+ * This is a helper function restored from a previous version.
+ * @param {Array<object>} data - The full analysis data table.
+ * @returns {number|null} - The calculated Fineness Modulus or null.
+ */
+function calculateFinenessModulusClientSide(data) {
+    const standardSizes = [9500, 4750, 2360, 1180, 600, 300, 150];
+    const sievesWithSizes = data.filter(s => s.size !== null).sort((a, b) => a.size - b.size);
+    if (sievesWithSizes.length === 0) return null;
+
+    let sum_cum_retained = 0;
+    standardSizes.forEach(stdSize => {
+        // Find the closest sieve size in the data (asof merge equivalent)
+        let closestSieve = null;
+        for (const sieve of sievesWithSizes) {
+            if (sieve.size <= stdSize) {
+                closestSieve = sieve;
+            } else {
+                break;
+            }
+        }
+        if (closestSieve) {
+            sum_cum_retained += closestSieve.cumulative_retained;
+        }
+    });
+
+    return sum_cum_retained > 0 ? sum_cum_retained / 100 : null;
 }
 
 function displayAnalysisHelp() {
-    const { Cu, Cc } = latestAnalysis;
+    const { Cu, Cc, std_dev_geotechnical, fineness_modulus } = latestAnalysis;
 
-    generalAnalysisContainer.innerHTML = `
-        <p><strong>ضریب یکنواختی (Cu):</strong> این ضریب نشان‌دهنده بازه توزیع اندازه ذرات است. مقدار Cu برابر با <strong>${Cu?.toFixed(2) ?? 'N/A'}</strong> است.</p>
-        <ul class="list-disc list-inside pr-4">
-            <li><strong>Cu > 4:</strong> خاک خوب دانه‌بندی شده (Well-graded).</li>
-            <li><strong>Cu < 4:</strong> خاک بد دانه‌بندی شده (Poorly-graded).</li>
-        </ul>
-        <p><strong>ضریب انحنا (Cc):</strong> این ضریب شکل منحنی توزیع ذرات را نشان می‌دهد. مقدار Cc برابر با <strong>${Cc?.toFixed(2) ?? 'N/A'}</strong> است.</p>
-        <ul class="list-disc list-inside pr-4">
-            <li><strong>1 < Cc < 3:</strong> منحنی توزیع ذرات نرم و پیوسته است (برای خاک خوب دانه‌بندی شده).</li>
-            <li><strong>Cc < 1 or Cc > 3:</strong> نشان‌دهنده کمبود ذرات در یک یا چند بازه اندازه‌ای است.</li>
-        </ul>
-    `;
+    let lines = ["<strong>تحلیل دانه‌بندی (Gradation):</strong>"];
+    if (Cu != null && Cc != null) {
+        if (Cu >= 4 && Cc >= 1 && Cc <= 3) {
+            lines.push(`<li>مقادیر Cu (${Cu.toFixed(2)}) و Cc (${Cc.toFixed(2)}) نشان‌دهنده یک خاک <strong>خوب دانه‌بندی شده (Well-Graded)</strong> است.</li>`);
+        } else {
+            lines.push(`<li>مقادیر Cu (${Cu.toFixed(2)}) و Cc (${Cc.toFixed(2)}) نشان‌دهنده یک خاک <strong>بد دانه‌بندی شده (Poorly-Graded)</strong> است.</li>`);
+        }
+    } else {
+        lines.push("<li>مقادیر Cu و Cc برای تعیین دقیق نوع دانه‌بندی کافی نبود.</li>");
+    }
+    lines.push("<br><strong>تحلیل یکنواختی (Sorting):</strong>");
+    if (std_dev_geotechnical != null) {
+        lines.push(`<li>انحراف معیار نمونه برابر با <strong>${std_dev_geotechnical.toFixed(2)} میکرون</strong> است.</li>`);
+    } else {
+        lines.push("<li>انحراف معیار قابل محاسبه نبود.</li>");
+    }
+
+    generalAnalysisContainer.innerHTML = lines.join("\n");
 
     let specificText = '';
-    if (currentSieveSet === 'crusher') {
-        specificText = '<strong>تحلیل نمونه سنگ شکن:</strong> این نمونه معرف خوراک ورودی به سنگ‌شکن‌ها یا محصول خروجی آن‌هاست. توزیع گسترده ذرات (Cu بالا) معمولاً مطلوب است تا فضای خالی بین ذرات بزرگ توسط ذرات کوچکتر پر شود و تراکم هیپ افزایش یابد.';
-    } else if (currentSieveSet === 'clay') {
-        specificText = '<strong>تحلیل نمونه رس:</strong> این نمونه دارای درصد بالایی از ذرات بسیار ریز است. مقادیر بالای ذرات ریز (مثلاً زیر 75 میکرون) می‌تواند نفوذپذیری هیپ را به شدت کاهش داده و باعث ایجاد مشکلاتی مانند کانالیزه شدن محلول و کاهش راندمان لیچینگ شود.';
+    if (currentSieveSet === 'concrete' && fineness_modulus != null) {
+        specificText = `<strong>تحلیل سنگدانه بتن:</strong> مدول نرمی (FM) <strong>${fineness_modulus.toFixed(2)}</strong> محاسبه شد. `;
+        if (fineness_modulus >= 2.3 && fineness_modulus <= 3.1) {
+            specificText += 'این مقدار در بازه استاندارد (2.3 تا 3.1) برای ماسه بتن قرار دارد.';
+        } else {
+            specificText += 'این مقدار خارج از بازه استاندارد است.';
+        }
     }
 
     if (specificText) {
@@ -250,6 +301,34 @@ function updateCharts() {
         }
     });
 
+    const retainedCtx = document.getElementById('retained-chart').getContext('2d');
+    const retainedData = sieves
+        .map((s, i) => ({ x: s.size, y: latestAnalysis.cumRetained[i] }))
+        .filter(d => d.x !== null)
+        .sort((a,b) => a.x - b.x);
+
+    if (retainedChartInstance) retainedChartInstance.destroy();
+    retainedChartInstance = new Chart(retainedCtx, {
+        type: 'line',
+        data: {
+            datasets: [{
+                label: 'درصد تجمعی مانده',
+                data: retainedData,
+                borderColor: '#c2185b',
+                backgroundColor: 'rgba(233, 30, 99, 0.2)',
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: {
+                x: { type: 'logarithmic', title: { display: false } },
+                y: { beginAtZero: true, max: 100, title: { display: true, text: 'درصد تجمعی مانده (%)' } }
+            }
+        }
+    });
+
     const weightCtx = document.getElementById('weight-chart').getContext('2d');
     const weightData = sieves.filter(s => s.size !== null);
     if (weightChartInstance) weightChartInstance.destroy();
@@ -275,6 +354,7 @@ function resetProgram() {
     resultsContainer.classList.add('hidden');
     welcomeContainer.classList.remove('hidden');
     if (passingChartInstance) passingChartInstance.destroy();
+    if (retainedChartInstance) retainedChartInstance.destroy();
     if (weightChartInstance) weightChartInstance.destroy();
     fabOptions.classList.remove('active');
 }
