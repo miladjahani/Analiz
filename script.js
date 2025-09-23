@@ -518,6 +518,7 @@ function setupEventListeners() {
     resetBtn.addEventListener('click', () => loadSieveSet('default'));
     loadCrusherBtn.addEventListener('click', () => loadSieveSet('crusher'));
     loadClayBtn.addEventListener('click', () => loadSieveSet('clay'));
+    document.getElementById('load-concrete-btn').addEventListener('click', () => loadSieveSet('concrete'));
 
     fab.addEventListener('click', () => {
     if (!latestAnalysis) {
