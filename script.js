@@ -404,7 +404,7 @@ async function exportToPDF(lang = 'fa') {
 
     // --- Font Loading ---
     try {
-        const fontURL = 'http://talashmotorcycle.com/css/fonts/nazanin/BNAZANIN.TTF';
+        const fontURL = './fonts/Vazirmatn-Regular.ttf'; // Local font path
         const fontResponse = await fetch(fontURL);
         if (!fontResponse.ok) throw new Error('Font file could not be downloaded.');
         const fontBuffer = await fontResponse.arrayBuffer();
@@ -416,9 +416,9 @@ async function exportToPDF(lang = 'fa') {
         }
         const fontBase64 = btoa(binary);
 
-        doc.addFileToVFS('BNazanin.ttf', fontBase64);
-        doc.addFont('BNazanin.ttf', 'BNazanin', 'normal');
-        doc.setFont('BNazanin');
+        doc.addFileToVFS('Vazirmatn-Regular.ttf', fontBase64);
+        doc.addFont('Vazirmatn-Regular.ttf', 'Vazirmatn', 'normal');
+        doc.setFont('Vazirmatn');
     } catch (error) {
         console.error("Font loading failed, falling back to default font:", error);
         alert("Font could not be loaded. PDF will be generated with a default font.");
@@ -460,7 +460,7 @@ async function exportToPDF(lang = 'fa') {
                 ['FM', fm?.toFixed(2) ?? 'N/A'],
                 ['Total Weight (g)', totalWeight?.toFixed(2) ?? 'N/A']
             ]),
-        styles: { font: 'BNazanin', halign: 'center' },
+        styles: { font: 'Vazirmatn', halign: 'center' },
         headStyles: { fillColor: [41, 128, 185] },
     });
 
@@ -478,7 +478,7 @@ async function exportToPDF(lang = 'fa') {
             row.cumulative_retained.toFixed(2),
             row.percent_passing.toFixed(2)
         ]),
-        styles: { font: 'BNazanin', halign: 'center' },
+        styles: { font: 'Vazirmatn', halign: 'center' },
     });
 
     doc.save(`Sieve-Analysis-Report-${new Date().toISOString().slice(0,10)}.pdf`);
