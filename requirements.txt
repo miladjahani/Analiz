@@ -1,8 +1,0 @@
-Flask
-numpy
-pandas
-openpyxl
-reportlab
-matplotlib
-python-bidi
-gunicorn

@@ -1,5 +1,5 @@
 // --- CONFIG & GLOBAL STATE ---
-const API_BASE_URL = '';
+const API_BASE_URL = ''; // No longer used, but kept for consistency
 const PREDEFINED_SIEVES = {
     "default": [
         { label: 'سرند 15', size: 150000 }, { label: '10 سانت', size: 100000 },
@@ -42,10 +42,9 @@ let currentSieveSet = 'default';
 let latestAnalysis = null;
 let passingChartInstance = null;
 let weightChartInstance = null;
-let retainedChartInstance = null; // New chart instance
+let retainedChartInstance = null;
 
 // --- DOM ELEMENTS ---
-// ... (omitted for brevity, they are the same)
 const sieveInputsContainer = document.getElementById('sieve-inputs');
 const calculateBtn = document.getElementById('calculate-btn');
 const resetBtn = document.getElementById('reset-btn');
@@ -101,28 +100,26 @@ function loadSieveSet(setName) {
     resetProgram();
 }
 
-// --- ANALYSIS ---
-async function performAnalysis() {
+// --- ANALYSIS (NOW CLIENT-SIDE) ---
+function performAnalysis() {
     const getFloat = value => { const num = parseFloat(value); return isNaN(num) ? 0.0 : num; };
     const inputSieves = sieves.map(sieve => ({ ...sieve, weight: getFloat(document.getElementById(`sieve-${sieve.label}`).value) }));
     if (inputSieves.reduce((sum, s) => sum + s.weight, 0) === 0) { alert('مجموع وزن‌ها نمی‌تواند صفر باشد.'); return; }
 
     calculateBtn.disabled = true;
     calculateBtn.innerHTML = 'در حال محاسبه...';
+
     try {
-        const response = await fetch(`${API_BASE_URL}/analyze`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sieves: inputSieves, sample_type: currentSieveSet })
-        });
-        if (!response.ok) { const err = await response.json(); throw new Error(err.error || `Error: ${response.status}`); }
-        latestAnalysis = await response.json();
+        // Perform analysis directly in the browser
+        latestAnalysis = performSieveAnalysisClientSide(inputSieves, currentSieveSet);
+        latestAnalysis.analysis_text = generateAnalysisTextClientSide(latestAnalysis.summary_stats, currentSieveSet);
+
         displayResults();
         displayAnalysisHelp();
         fab.style.display = 'flex';
     } catch (error) {
         console.error('Analysis Error:', error);
-        alert(`خطا در ارتباط با سرور: ${error.message}`);
+        alert(`خطا در هنگام تحلیل داده‌ها: ${error.message}`);
     } finally {
         calculateBtn.disabled = false;
         calculateBtn.innerHTML = 'محاسبه';
@@ -163,7 +160,7 @@ function updateCharts() {
     if (passingChartInstance) passingChartInstance.destroy();
     passingChartInstance = new Chart(document.getElementById('passing-chart').getContext('2d'), { type: 'line', data: { datasets: [{ label: 'درصد عبوری', data: passingData, borderColor: '#673ab7', backgroundColor: 'rgba(103, 58, 183, 0.2)', fill: true, tension: 0.4 }] }, options: chartOptions });
 
-    // Retained Chart (New)
+    // Retained Chart
     const retainedData = tableData.filter(d => d.size !== null).map(d => ({ x: d.size, y: d.cumulative_retained })).sort((a, b) => a.x - b.x);
     if (retainedChartInstance) retainedChartInstance.destroy();
     retainedChartInstance = new Chart(document.getElementById('retained-chart').getContext('2d'), { type: 'line', data: { datasets: [{ label: 'درصد تجمعی مانده', data: retainedData, borderColor: '#c2185b', backgroundColor: 'rgba(233, 30, 99, 0.2)', fill: true, tension: 0.4 }] }, options: chartOptions });
@@ -181,32 +178,170 @@ function resetProgram() {
     welcomeContainer.classList.remove('hidden');
     if (passingChartInstance) passingChartInstance.destroy();
     if (weightChartInstance) weightChartInstance.destroy();
-    if (retainedChartInstance) retainedChartInstance.destroy(); // Destroy new chart
+    if (retainedChartInstance) retainedChartInstance.destroy();
     fab.style.display = 'none';
     fabOptions.classList.remove('active');
 }
 
 // --- EXPORTING ---
-async function exportFile(url, fileName) {
-    if (!latestAnalysis) { alert('ابتدا تحلیل را انجام دهید.'); return; }
-    try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(latestAnalysis)
+async function exportExcelClientSide() {
+    if (!latestAnalysis) {
+        alert('ابتدا تحلیل را انجام دهید.');
+        return;
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    const summaryWs = workbook.addWorksheet('Summary', { views: [{ rightToLeft: true }] });
+    const dataWs = workbook.addWorksheet('Data', { views: [{ rightToLeft: true }] });
+
+    // --- Summary Sheet ---
+    const chartImageBase64 = passingChartInstance.toBase64Image();
+    const imageId = workbook.addImage({
+        base64: chartImageBase64,
+        extension: 'png',
+    });
+    summaryWs.addImage(imageId, 'I1:P16'); // Adjust range as needed
+
+    summaryWs.columns = [
+        { header: 'پارامتر', key: 'param', width: 25 },
+        { header: 'مقدار', key: 'value', width: 15 }
+    ];
+
+    const stats = latestAnalysis.summary_stats;
+    const summaryData = [
+        { param: "D10 (µm)", value: stats.d_values.d10 },
+        { param: "D30 (µm)", value: stats.d_values.d30 },
+        { param: "D50 (µm)", value: stats.d_values.d50 },
+        { param: "D60 (µm)", value: stats.d_values.d60 },
+        { param: "ضریب یکنواختی (Cu)", value: stats.Cu },
+        { param: "ضریب انحنا (Cc)", value: stats.Cc },
+        { param: "انحراف معیار (µm)", value: stats.std_dev_geotechnical },
+        { param: "مدول نرمی (FM)", value: stats.fineness_modulus },
+        { param: "وزن کل (g)", value: stats.total_weight }
+    ];
+
+    summaryData.forEach(item => {
+        if (item.value !== null && item.value !== undefined) {
+            const value = (typeof item.value === 'number') ? parseFloat(item.value.toFixed(2)) : item.value;
+            summaryWs.addRow({ param: item.param, value: value });
+        }
+    });
+
+    // --- Data Sheet ---
+    dataWs.columns = [
+        { header: "سرند", key: "label", width: 20 },
+        { header: "اندازه (µm)", key: "size", width: 15 },
+        { header: "وزن (g)", key: "weight", width: 15 },
+        { header: "درصد مانده", key: "percent_retained", width: 15 },
+        { header: "تجمعی مانده", key: "cumulative_retained", width: 15 },
+        { header: "درصد عبوری", key: "percent_passing", width: 15 }
+    ];
+
+    latestAnalysis.results_table.forEach(row => {
+        dataWs.addRow({
+            label: row.label,
+            size: row.size,
+            weight: parseFloat(row.weight.toFixed(2)),
+            percent_retained: parseFloat(row.percent_retained.toFixed(2)),
+            cumulative_retained: parseFloat(row.cumulative_retained.toFixed(2)),
+            percent_passing: parseFloat(row.percent_passing.toFixed(2))
         });
-        if (!response.ok) throw new Error('خطا در ساخت فایل در سرور.');
-        const blob = await response.blob();
-        const link = document.createElement('a');
-        link.href = window.URL.createObjectURL(blob);
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(link.href);
+    });
+
+    // --- Save File ---
+    try {
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        saveAs(blob, 'SieveAnalysis.xlsx');
     } catch (error) {
-        console.error(`Export Error:`, error);
-        alert(`خطا در خروجی گرفتن: ${error.message}`);
+        console.error('Error writing excel file', error);
+        alert('خطا در ایجاد فایل اکسل.');
+    }
+}
+
+// Helper function to fetch a file and read it as a base64 string
+async function getFileAsBase64(path) {
+    const response = await fetch(path);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch file: ${path}`);
+    }
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+}
+
+async function exportPdfClientSide() {
+    if (!latestAnalysis) {
+        alert('ابتدا تحلیل را انجام دهید.');
+        return;
+    }
+
+    try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        // --- FONT & RTL SETUP ---
+        const fontBase64 = await getFileAsBase64('Vazirmatn-Regular.ttf');
+        doc.addFileToVFS('Vazirmatn-Regular.ttf', fontBase64);
+        doc.addFont('Vazirmatn-Regular.ttf', 'Vazirmatn', 'normal');
+        doc.setFont('Vazirmatn');
+
+        // Helper for RTL text
+        const p_text = (text) => {
+            if (!text) return '';
+            return arabicreshaper.reshape(text).split('').reverse().join('');
+        };
+
+        // --- PDF CONTENT ---
+        const chartImageBase64 = passingChartInstance.toBase64Image();
+
+        // Title
+        doc.setFontSize(18);
+        doc.text(p_text('گزارش تحلیل سرندی'), 105, 20, { align: 'center' });
+
+        // Chart
+        doc.addImage(chartImageBase64, 'PNG', 15, 30, 180, 100);
+
+        // Summary Table
+        const stats = latestAnalysis.summary_stats;
+        const summaryData = [
+            ["D10 (µm)", stats.d_values.d10],
+            ["D30 (µm)", stats.d_values.d30],
+            ["D50 (µm)", stats.d_values.d50],
+            ["D60 (µm)", stats.d_values.d60],
+            [p_text("ضریب یکنواختی (Cu)"), stats.Cu],
+            [p_text("ضریب انحنا (Cc)"), stats.Cc],
+            [p_text("انحراف معیار (µm)"), stats.std_dev_geotechnical],
+            [p_text("مدول نرمی (FM)"), stats.fineness_modulus],
+            [p_text("وزن کل (g)"), stats.total_weight]
+        ].filter(row => row[1] !== null && row[1] !== undefined)
+         .map(row => [
+            (typeof row[1] === 'number') ? row[1].toFixed(2) : row[1],
+            row[0]
+         ]);
+
+        doc.autoTable({
+            startY: 140,
+            head: [[p_text('مقدار'), p_text('پارامتر')]],
+            body: summaryData,
+            styles: {
+                font: 'Vazirmatn',
+                halign: 'center'
+            },
+            headStyles: {
+                fillColor: [22, 160, 133]
+            },
+        });
+
+        doc.save('SieveAnalysisReport.pdf');
+
+    } catch (error) {
+        console.error('Error creating PDF:', error);
+        alert(`خطا در ایجاد فایل PDF: ${error.message}. ممکن است فایل فونت بارگذاری نشده باشد.`);
     }
 }
 
@@ -222,8 +357,8 @@ function setupEventListeners() {
         if (latestAnalysis) fabOptions.classList.toggle('active');
         else alert('ابتدا باید محاسبات را انجام دهید.');
     });
-    exportExcelBtn.addEventListener('click', () => exportFile(`${API_BASE_URL}/export/excel`, 'SieveAnalysis.xlsx'));
-    exportPdfBtn.addEventListener('click', () => exportFile(`${API_BASE_URL}/export/pdf`, 'SieveAnalysisReport.pdf'));
+    exportExcelBtn.addEventListener('click', exportExcelClientSide);
+    exportPdfBtn.addEventListener('click', exportPdfClientSide);
 
     manageSievesBtn.addEventListener('click', () => {
         renderModalSieveList();
@@ -253,3 +388,145 @@ window.onload = () => {
     setupEventListeners();
     fab.style.display = 'none';
 };
+
+// --- CLIENT-SIDE ANALYSIS LOGIC ---
+
+/**
+ * Generates descriptive text based on analysis summary statistics.
+ * @param {object} summary_stats - The summary statistics object.
+ * @param {string} sample_type - The type of sample being analyzed.
+ * @returns {object} - An object with general and specific analysis text.
+ */
+function generateAnalysisTextClientSide(summary_stats, sample_type) {
+    const { Cu, Cc, std_dev_geotechnical, fineness_modulus } = summary_stats;
+    let lines = ["<strong>تحلیل دانه‌بندی (Gradation):</strong>"];
+    if (Cu != null && Cc != null) {
+        if (Cu >= 4 && Cc >= 1 && Cc <= 3) {
+            lines.push(`<li>مقادیر Cu (${Cu.toFixed(2)}) و Cc (${Cc.toFixed(2)}) نشان‌دهنده یک خاک <strong>خوب دانه‌بندی شده (Well-Graded)</strong> است.</li>`);
+        } else {
+            lines.push(`<li>مقادیر Cu (${Cu.toFixed(2)}) و Cc (${Cc.toFixed(2)}) نشان‌دهنده یک خاک <strong>بد دانه‌بندی شده (Poorly-Graded)</strong> است.</li>`);
+        }
+    } else {
+        lines.push("<li>مقادیر Cu و Cc برای تعیین دقیق نوع دانه‌بندی کافی نبود.</li>");
+    }
+    lines.push("<br><strong>تحلیل یکنواختی (Sorting):</strong>");
+    if (std_dev_geotechnical != null) {
+        lines.push(`<li>انحراف معیار نمونه برابر با <strong>${std_dev_geotechnical.toFixed(2)} میکرون</strong> است.</li>`);
+    } else {
+        lines.push("<li>انحراف معیار قابل محاسبه نبود.</li>");
+    }
+    let specific_text = '';
+    if (sample_type === 'concrete' && fineness_modulus != null) {
+        specific_text = `<strong>تحلیل سنگدانه بتن:</strong> مدول نرمی (FM) <strong>${fineness_modulus.toFixed(2)}</strong> محاسبه شد. `;
+        if (fineness_modulus >= 2.3 && fineness_modulus <= 3.1) {
+            specific_text += 'این مقدار در بازه استاندارد (2.3 تا 3.1) برای ماسه بتن قرار دارد.';
+        } else {
+            specific_text += 'این مقدار خارج از بازه استاندارد است.';
+        }
+    }
+    return { "general_analysis": lines.join("\n"), "specific_analysis": specific_text };
+}
+
+/**
+ * Calculates the Fineness Modulus (FM) for concrete aggregate analysis.
+ * @param {Array<object>} data - The full analysis data table.
+ * @returns {number|null} - The calculated Fineness Modulus or null.
+ */
+function calculateFinenessModulusClientSide(data) {
+    const standardSizes = [9500, 4750, 2360, 1180, 600, 300, 150];
+    const sievesWithSizes = data.filter(s => s.size !== null).sort((a, b) => a.size - b.size);
+    if (sievesWithSizes.length === 0) return null;
+
+    let sum_cum_retained = 0;
+    standardSizes.forEach(stdSize => {
+        // Find the closest sieve size in the data (asof merge equivalent)
+        let closestSieve = null;
+        for (const sieve of sievesWithSizes) {
+            if (sieve.size <= stdSize) {
+                closestSieve = sieve;
+            } else {
+                break;
+            }
+        }
+        if (closestSieve) {
+            sum_cum_retained += closestSieve.cumulative_retained;
+        }
+    });
+
+    return sum_cum_retained > 0 ? sum_cum_retained / 100 : null;
+}
+
+/**
+ * Performs a full sieve analysis on the input data, client-side.
+ * @param {Array<object>} sieves_data - Array of sieve objects with weights.
+ * @param {string} sample_type - The type of sample.
+ * @returns {object} - An object containing the results table and summary stats.
+ */
+function performSieveAnalysisClientSide(sieves_data, sample_type) {
+    // 1. Initial processing and sorting
+    let df = sieves_data.map(s => ({...s, weight: parseFloat(s.weight) || 0, size: s.size ? parseFloat(s.size) : null }))
+                      .sort((a, b) => (b.size ?? -1) - (a.size ?? -1));
+
+    // 2. Calculate total weight and percentages
+    const total_weight = df.reduce((sum, s) => sum + s.weight, 0);
+    if (total_weight === 0) throw new Error("Total weight cannot be zero.");
+
+    let cumulative_retained = 0;
+    df = df.map(sieve => {
+        const percent_retained = (sieve.weight / total_weight) * 100;
+        cumulative_retained += percent_retained;
+        return { ...sieve, percent_retained, cumulative_retained };
+    });
+
+    df = df.map(sieve => {
+        const percent_passing = Math.max(0, 100 - sieve.cumulative_retained);
+        return { ...sieve, percent_passing };
+    });
+
+    // 3. Interpolation for D-values
+    const interp_df = df.filter(s => s.size !== null);
+    const known_percents = interp_df.map(s => s.percent_passing).reverse();
+    const known_log_sizes = interp_df.map(s => Math.log(s.size)).reverse();
+
+    const linearInterpolate = (x, x_points, y_points) => {
+        if (x <= x_points[0]) return y_points[0];
+        if (x >= x_points[x_points.length - 1]) return y_points[x_points.length - 1];
+
+        let i = 1;
+        while (x > x_points[i]) i++;
+
+        const x1 = x_points[i - 1], y1 = y_points[i - 1];
+        const x2 = x_points[i], y2 = y_points[i];
+
+        if (x1 === x2) return y1; // Avoid division by zero
+
+        return y1 + (x - x1) * (y2 - y1) / (x2 - x1);
+    };
+
+    const d_values = {};
+    const target_percents = [10, 16, 30, 50, 60, 84];
+    if (known_percents.length >= 2) {
+        target_percents.forEach(p => {
+            const log_d = linearInterpolate(p, known_percents, known_log_sizes);
+            d_values[`d${p}`] = !isNaN(log_d) ? Math.exp(log_d) : null;
+        });
+    }
+
+    // 4. Calculate summary statistics
+    const { d10, d16, d30, d60, d84 } = d_values;
+    const Cu = (d10 && d60 && d10 > 0) ? d60 / d10 : null;
+    const Cc = (d10 && d30 && d60 && d10 > 0 && d60 > 0) ? (d30**2) / (d10 * d60) : null;
+    const std_dev_geotechnical = (d16 && d84) ? (d84 - d16) / 2 : null;
+    const fineness_modulus = (sample_type === 'concrete') ? calculateFinenessModulusClientSide(df) : null;
+
+    const summary = {
+        d_values: { d10, d30, d50: d_values.d50, d60 },
+        Cu,
+        Cc,
+        total_weight,
+        std_dev_geotechnical,
+        fineness_modulus
+    };
+
+    return { results_table: df, summary_stats: summary };
+}
