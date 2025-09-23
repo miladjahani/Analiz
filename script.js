@@ -433,12 +433,13 @@ addSieveBtn.addEventListener('click', () => {
 });
 
 // --- EVENT LISTENERS ---
-calculateBtn.addEventListener('click', performAnalysis);
-resetBtn.addEventListener('click', () => loadSieveSet('default'));
-loadCrusherBtn.addEventListener('click', () => loadSieveSet('crusher'));
-loadClayBtn.addEventListener('click', () => loadSieveSet('clay'));
+function setupEventListeners() {
+    calculateBtn.addEventListener('click', performAnalysis);
+    resetBtn.addEventListener('click', () => loadSieveSet('default'));
+    loadCrusherBtn.addEventListener('click', () => loadSieveSet('crusher'));
+    loadClayBtn.addEventListener('click', () => loadSieveSet('clay'));
 
-fab.addEventListener('click', () => {
+    fab.addEventListener('click', () => {
     if (!latestAnalysis) {
         alert('ابتدا باید محاسبات را انجام دهید تا بتوانید خروجی بگیرید.');
         return;
@@ -462,7 +463,8 @@ fabOptions.addEventListener('click', (event) => {
 
     // Hide the options menu after a selection is made
     fabOptions.classList.remove('active');
-});
+    });
+}
 
 // --- PDF EXPORT ---
 async function exportToPDF() {
@@ -669,4 +671,5 @@ async function exportToPDF_EN() {
 // --- INITIALIZE ---
 window.onload = () => {
     renderSieveInputs();
+    setupEventListeners();
 };
