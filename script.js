@@ -26,12 +26,20 @@ const PREDEFINED_SIEVES = {
         { label: '200 مش', size: 75 }, { label: '270 مش', size: 53 },
         { label: '400 مش', size: 38 }, { label: '500 مش', size: 25 },
         { label: 'سینی', size: null },
+    ],
+    "concrete": [
+        { label: '1.5 اینچ', size: 37500 }, { label: '1 اینچ', size: 25000 },
+        { label: '3/4 اینچ', size: 19000 }, { label: '1/2 اینچ', size: 12500 },
+        { label: '3/8 اینچ', size: 9500 }, { label: 'No. 4', size: 4750 },
+        { label: 'No. 8', size: 2360 }, { label: 'No. 16', size: 1180 },
+        { label: 'No. 30', size: 600 }, { label: 'No. 50', size: 300 },
+        { label: 'No. 100', size: 150 }, { label: 'سینی', size: null },
     ]
 };
 let sieves = [...PREDEFINED_SIEVES.default];
 let currentSieveSet = 'default';
 
-const TARGET_VALUES = { d10: 10, d16: 16, d30: 30, d50: 50, d60: 60, d84: 84 };
+const TARGET_VALUES = { d10: 10, d16: 16, d30: 30, d50: 50, d60: 60, d80: 80, d84: 84 };
 let latestAnalysis = null;
 let passingChartInstance = null;
 let retainedChartInstance = null; // Add this line
