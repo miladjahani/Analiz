@@ -1,5 +1,5 @@
 import logging
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, send_from_directory
 import numpy as np
 import pandas as pd
 import requests
@@ -35,8 +35,7 @@ except Exception as e:
 
 # Configure basic logging
 logging.basicConfig(level=logging.INFO)
-# Serve static files from the root directory
-app = Flask(__name__, static_folder='.', static_url_path='')
+app = Flask(__name__)
 
 
 # --- ANALYSIS LOGIC (from previous steps, unchanged) ---
@@ -199,11 +198,9 @@ def create_pdf_report(analysis_data):
     return buf
 
 
-# --- API ENDPOINTS ---
-@app.route('/')
-def index():
-    return app.send_static_file('index.html')
+# --- API and Static File Serving ---
 
+# API endpoint for analysis
 @app.route('/analyze', methods=['POST'])
 def analyze_sieve_data_endpoint():
     data = request.get_json()
@@ -213,17 +210,29 @@ def analyze_sieve_data_endpoint():
     analysis_results['analysis_text'] = generate_analysis_text(analysis_results['summary_stats'], sample_type)
     return jsonify(analysis_results)
 
+# API endpoint for Excel export
 @app.route('/export/excel', methods=['POST'])
 def export_excel():
     analysis_data = request.get_json()
     excel_buf = create_excel_report(analysis_data)
     return send_file(excel_buf, download_name="sieve_analysis.xlsx", as_attachment=True, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
+# API endpoint for PDF export
 @app.route('/export/pdf', methods=['POST'])
 def export_pdf():
     analysis_data = request.get_json()
     pdf_buf = create_pdf_report(analysis_data)
     return send_file(pdf_buf, download_name="sieve_analysis_report.pdf", as_attachment=True, mimetype='application/pdf')
+
+# Serve the main index.html file
+@app.route('/')
+def serve_index():
+    return send_from_directory('.', 'index.html')
+
+# Serve any other static file (JS, CSS, font, etc.)
+@app.route('/<path:path>')
+def serve_static_files(path):
+    return send_from_directory('.', path)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
