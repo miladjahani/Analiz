@@ -1,6 +1,5 @@
 import logging
 from flask import Flask, request, jsonify, send_file
-from flask_cors import CORS
 import numpy as np
 import pandas as pd
 import requests
@@ -36,8 +35,8 @@ except Exception as e:
 
 # Configure basic logging
 logging.basicConfig(level=logging.INFO)
-app = Flask(__name__)
-CORS(app)
+# Serve static files from the root directory
+app = Flask(__name__, static_folder='.', static_url_path='')
 
 
 # --- ANALYSIS LOGIC (from previous steps, unchanged) ---
@@ -202,7 +201,8 @@ def create_pdf_report(analysis_data):
 
 # --- API ENDPOINTS ---
 @app.route('/')
-def index(): return "Python backend server is running!"
+def index():
+    return app.send_static_file('index.html')
 
 @app.route('/analyze', methods=['POST'])
 def analyze_sieve_data_endpoint():
