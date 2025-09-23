@@ -72,6 +72,20 @@ const newSieveSizeInput = document.getElementById('new-sieve-size');
 
 
 // --- RENDER & UI ---
+function renderModalSieveList() {
+    modalSieveList.innerHTML = '';
+    sieves.sort((a, b) => (b.size ?? -1) - (a.size ?? -1));
+    sieves.forEach(sieve => {
+        const item = document.createElement('div');
+        item.className = 'flex justify-between items-center p-2 border-b';
+        item.innerHTML = `
+            <span>${sieve.label} (${sieve.size ?? 'سینی'} µm)</span>
+            <button data-label="${sieve.label}" class="delete-sieve-btn text-red-500 hover:text-red-700">حذف</button>
+        `;
+        modalSieveList.appendChild(item);
+    });
+}
+
 function renderSieveInputs() {
     sieveInputsContainer.innerHTML = '';
     sieves.sort((a, b) => (b.size ?? -1) - (a.size ?? -1));
@@ -376,10 +390,20 @@ function setupEventListeners() {
         if (!label) { alert('لطفاً نام سرند را وارد کنید.'); return; }
         if (sieves.find(s => s.label === label)) { alert('سرندی با این نام از قبل وجود دارد.'); return; }
         sieves.push({ label, size: size === '' ? null : getFloat(size) });
-        renderModalSieveList();
         renderSieveInputs();
+        renderModalSieveList(); // Update the modal list as well
         newSieveLabelInput.value = '';
         newSieveSizeInput.value = '';
+    });
+
+    // Event delegation for delete buttons
+    modalSieveList.addEventListener('click', (e) => {
+        if (e.target.classList.contains('delete-sieve-btn')) {
+            const labelToDelete = e.target.dataset.label;
+            sieves = sieves.filter(s => s.label !== labelToDelete);
+            renderSieveInputs();
+            renderModalSieveList();
+        }
     });
 }
 
