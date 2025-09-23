@@ -99,9 +99,12 @@ const dom = {
 
 function linearInterpolate(x, x_points, y_points) {
     if (!x_points || x_points.length < 2) return null;
+    if (x < x_points[0]) return null; // Prevent extrapolation below the minimum data point.
+
     let i = 1;
     while (i < x_points.length && x_points[i] < x) i++;
     if (i === 0 || i === x_points.length) return null; // x is out of range
+
     const x1 = x_points[i - 1], y1 = y_points[i - 1];
     const x2 = x_points[i], y2 = y_points[i];
     if (x1 === x2) return y1;
