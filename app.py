@@ -1,16 +1,14 @@
 import logging
+import os
 from flask import Flask, request, jsonify, send_file, send_from_directory
 import numpy as np
 import pandas as pd
-import requests
 from io import BytesIO
 import matplotlib
-matplotlib.use('Agg')  # Use non-interactive backend
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from openpyxl import Workbook
-from openpyxl.chart import ScatterChart, Reference, Series
 from openpyxl.drawing.image import Image as OpenpyxlImage
-from openpyxl.styles import Font, Alignment, Border, Side
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image as ReportlabImage
 from reportlab.lib import colors
@@ -19,19 +17,18 @@ from reportlab.pdfbase.ttfonts import TTFont
 from bidi.algorithm import get_display
 
 # --- FONT HANDLING ---
-VAZIRMATN_FONT_URL = 'https://raw.githubusercontent.com/rastikerdar/vazirmatn/v33.003/fonts/ttf/Vazirmatn-Regular.ttf'
+# The font file is expected to be in the repository, co-located with this script.
 VAZIRMATN_FONT_PATH = 'Vazirmatn-Regular.ttf'
+FONT_AVAILABLE = False
 try:
-    # Download and register the font for ReportLab
-    response = requests.get(VAZIRMATN_FONT_URL)
-    response.raise_for_status()
-    with open(VAZIRMATN_FONT_PATH, 'wb') as f:
-        f.write(response.content)
-    pdfmetrics.registerFont(TTFont('Vazirmatn', VAZIRMATN_FONT_PATH))
-    FONT_AVAILABLE = True
+    # We check if the font file exists. If not, PDF export will work but without Persian characters.
+    if os.path.exists(VAZIRMATN_FONT_PATH):
+        pdfmetrics.registerFont(TTFont('Vazirmatn', VAZIRMATN_FONT_PATH))
+        FONT_AVAILABLE = True
+    else:
+        logging.warning(f"Font file not found at {VAZIRMATN_FONT_PATH}. PDF export may not render Persian text correctly.")
 except Exception as e:
-    logging.error(f"Could not download or register Vazirmatn font: {e}")
-    FONT_AVAILABLE = False
+    logging.error(f"Could not register Vazirmatn font: {e}")
 
 # Configure basic logging
 logging.basicConfig(level=logging.INFO)
@@ -90,9 +87,7 @@ def perform_sieve_analysis(sieves_data, sample_type):
     return {'results_table': df.to_dict(orient='records'), 'summary_stats': summary}
 
 
-# --- CHARTING ---
 def create_passing_chart_image(analysis_data):
-    """Generates a passing curve chart using Matplotlib and returns it as a BytesIO buffer."""
     df = pd.DataFrame(analysis_data['results_table']).dropna(subset=['size'])
     fig, ax = plt.subplots(figsize=(8, 5))
     ax.plot(df['size'], df['percent_passing'], marker='o', linestyle='-', color='b')
@@ -108,16 +103,13 @@ def create_passing_chart_image(analysis_data):
     return buf
 
 
-# --- EXCEL REPORT ---
 def create_excel_report(analysis_data):
     wb = Workbook()
     summary_ws = wb.active
     summary_ws.title = "Summary"
     summary_ws.sheet_view.rightToLeft = True
-
     headers = ["پارامتر", "مقدار"]
     summary_ws.append(headers)
-
     stats = analysis_data['summary_stats']
     summary_data = [
         ("D10 (µm)", stats['d_values'].get('d10')), ("D30 (µm)", stats['d_values'].get('d30')),
@@ -129,53 +121,40 @@ def create_excel_report(analysis_data):
     for row_data in summary_data:
         if row_data[1] is not None:
             summary_ws.append([row_data[0], round(row_data[1], 2) if isinstance(row_data[1], (int, float)) else row_data[1]])
-
-    # --- Data Sheet ---
     data_ws = wb.create_sheet(title="Data")
     data_ws.sheet_view.rightToLeft = True
     data_headers = ["سرند", "اندازه (µm)", "وزن (g)", "درصد مانده", "تجمعی مانده", "درصد عبوری"]
     data_ws.append(data_headers)
     for row in analysis_data['results_table']:
         data_ws.append([row['label'], row['size'], row['weight'], row['percent_retained'], row['cumulative_retained'], row['percent_passing']])
-
-    # --- Add Chart ---
     chart_img_buf = create_passing_chart_image(analysis_data)
     img = OpenpyxlImage(chart_img_buf)
     img.anchor = 'J2'
     summary_ws.add_image(img)
-
     excel_buf = BytesIO()
     wb.save(excel_buf)
     excel_buf.seek(0)
     return excel_buf
 
 
-# --- PDF REPORT ---
 def p_text(text):
-    """Helper for Persian text in ReportLab."""
     return Paragraph(get_display(text), style_sheet['Persian'])
 
 def create_pdf_report(analysis_data):
     buf = BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=letter, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=18)
     story = []
-
-    # Styles
     global style_sheet
     from reportlab.lib.styles import getSampleStyleSheet
     style_sheet = getSampleStyleSheet()
     font_name = 'Vazirmatn' if FONT_AVAILABLE else 'Helvetica'
     style_sheet.add(ParagraphStyle(name='Persian', fontName=font_name, fontSize=10, leading=14, alignment=2))
     style_sheet.add(ParagraphStyle(name='TitlePersian', parent='Persian', fontSize=18, alignment=1))
-
-    # Content
     story.append(p_text('گزارش تحلیل سرندی'))
     story.append(Spacer(1, 12))
-
     chart_img_buf = create_passing_chart_image(analysis_data)
     story.append(ReportlabImage(chart_img_buf, width=450, height=280))
     story.append(Spacer(1, 24))
-
     stats = analysis_data['summary_stats']
     summary_data = [[p_text("مقدار"), p_text("پارامتر")]]
     summary_items = [
@@ -188,19 +167,14 @@ def create_pdf_report(analysis_data):
     for name, val in summary_items:
         if val is not None:
             summary_data.append([f"{val:.2f}" if isinstance(val, (int, float)) else val, p_text(name)])
-
     summary_table = Table(summary_data, colWidths=[100, 200])
     summary_table.setStyle(TableStyle([('ALIGN', (0,0), (-1,-1), 'CENTER'), ('FONTNAME', (0,0), (-1,-1), font_name), ('GRID', (0,0), (-1,-1), 1, colors.black)]))
     story.append(summary_table)
-
     doc.build(story)
     buf.seek(0)
     return buf
 
-
 # --- API and Static File Serving ---
-
-# API endpoint for analysis
 @app.route('/analyze', methods=['POST'])
 def analyze_sieve_data_endpoint():
     data = request.get_json()
@@ -210,26 +184,22 @@ def analyze_sieve_data_endpoint():
     analysis_results['analysis_text'] = generate_analysis_text(analysis_results['summary_stats'], sample_type)
     return jsonify(analysis_results)
 
-# API endpoint for Excel export
 @app.route('/export/excel', methods=['POST'])
 def export_excel():
     analysis_data = request.get_json()
     excel_buf = create_excel_report(analysis_data)
     return send_file(excel_buf, download_name="sieve_analysis.xlsx", as_attachment=True, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
-# API endpoint for PDF export
 @app.route('/export/pdf', methods=['POST'])
 def export_pdf():
     analysis_data = request.get_json()
     pdf_buf = create_pdf_report(analysis_data)
     return send_file(pdf_buf, download_name="sieve_analysis_report.pdf", as_attachment=True, mimetype='application/pdf')
 
-# Serve the main index.html file
 @app.route('/')
 def serve_index():
     return send_from_directory('.', 'index.html')
 
-# Serve any other static file (JS, CSS, font, etc.)
 @app.route('/<path:path>')
 def serve_static_files(path):
     return send_from_directory('.', path)
