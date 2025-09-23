@@ -1,594 +1,414 @@
-// --- PREDEFINED DATA ---
+/**
+ * Sieve Analysis Calculator
+ * A client-side tool for performing and reporting sieve analysis for different materials.
+ *
+ * @version 2.0.0
+ * @author Jules
+ */
+
+// --- 1. GLOBAL STATE & CONFIGURATION ---
+
 const PREDEFINED_SIEVES = {
     "default": [
-        { label: 'سرند 15', size: 150000 }, { label: '10 سانت', size: 100000 },
-        { label: '7.5 سانت', size: 75000 }, { label: '2 اینچ', size: 50800 },
-        { label: '1اینچ', size: 25400 }, { label: '3/4 اینچ', size: 19000 },
-        { label: '1/2 اینچ', size: 12700 }, { label: '4 مش', size: 4760 },
-        { label: '8 مش', size: 2380 }, { label: '16 مش', size: 1190 },
-        { label: '30 مش', size: 595 }, { label: '100 مش', size: 149 },
-        { label: 'سینی', size: null },
-    ],
-    "crusher": [
-        { label: '6 اینچ', size: 152400 }, { label: '4 اینچ', size: 101600 },
-        { label: '2 اینچ', size: 50800 }, { label: '1 اینچ', size: 25400 },
-        { label: '3/4 اینچ', size: 19000 }, { label: '1/2 اینچ', size: 12700 },
-        { label: '3/8 اینچ', size: 9525 }, { label: '4 مش', size: 4750 },
-        { label: '10 مش', size: 2000 }, { label: '40 مش', size: 425 },
-        { label: '100 مش', size: 150 }, { label: '200 مش', size: 75 },
-        { label: 'سینی', size: null },
-    ],
-    "clay": [
-        { label: '20 مش', size: 850 }, { label: '40 مش', size: 425 },
-        { label: '60 مش', size: 250 }, { label: '80 مش', size: 180 },
-        { label: '100 مش', size: 150 }, { label: '120 مش', size: 125 },
-        { label: '140 مش', size: 106 }, { label: '170 مش', size: 90 },
-        { label: '200 مش', size: 75 }, { label: '270 مش', size: 53 },
-        { label: '400 مش', size: 38 }, { label: '500 مش', size: 25 },
-        { label: 'سینی', size: null },
-    ],
-    "concrete": [
-        { label: '1.5 اینچ', size: 37500 }, { label: '1 اینچ', size: 25000 },
-        { label: '3/4 اینچ', size: 19000 }, { label: '1/2 اینچ', size: 12500 },
-        { label: '3/8 اینچ', size: 9500 }, { label: 'No. 4', size: 4750 },
+        { label: '4 inch', size: 101600 }, { label: '2 inch', size: 50800 },
+        { label: '1 inch', size: 25400 }, { label: '3/4 inch', size: 19000 },
+        { label: '1/2 inch', size: 12700 }, { label: 'No. 4', size: 4750 },
         { label: 'No. 8', size: 2360 }, { label: 'No. 16', size: 1180 },
         { label: 'No. 30', size: 600 }, { label: 'No. 50', size: 300 },
-        { label: 'No. 100', size: 150 }, { label: 'سینی', size: null },
+        { label: 'No. 100', size: 150 }, { label: 'No. 200', size: 75 },
+        { label: 'Pan', size: null },
+    ],
+    "concrete": [
+        { label: '1.5 inch', size: 37500 }, { label: '1 inch', size: 25000 },
+        { label: '3/4 inch', size: 19000 }, { label: '1/2 inch', size: 12500 },
+        { label: '3/8 inch', size: 9500 }, { label: 'No. 4', size: 4750 },
+        { label: 'No. 8', size: 2360 }, { label: 'No. 16', size: 1180 },
+        { label: 'No. 30', size: 600 }, { label: 'No. 50', size: 300 },
+        { label: 'No. 100', size: 150 }, { label: 'Pan', size: null },
+    ],
+    "crusher": [
+        { label: '6 inch', size: 152400 }, { label: '4 inch', size: 101600 },
+        { label: '2 inch', size: 50800 }, { label: '1 inch', size: 25400 },
+        { label: '3/4 inch', size: 19000 }, { label: '1/2 inch', size: 12700 },
+        { label: '3/8 inch', size: 9525 }, { label: 'No. 4', size: 4750 },
+        { label: 'No. 10', size: 2000 }, { label: 'No. 40', size: 425 },
+        { label: 'No. 100', size: 150 }, { label: 'No. 200', size: 75 },
+        { label: 'Pan', size: null },
+    ],
+    "clay": [
+        { label: 'No. 10', size: 2000 }, { label: 'No. 20', size: 850 },
+        { label: 'No. 40', size: 425 }, { label: 'No. 60', size: 250 },
+        { label: 'No. 80', size: 180 }, { label: 'No. 100', size: 150 },
+        { label: 'No. 140', size: 106 }, { label: 'No. 200', size: 75 },
+        { label: 'Pan', size: null },
     ]
 };
-let sieves = [...PREDEFINED_SIEVES.default];
+
+let currentSieves = [...PREDEFINED_SIEVES.default];
 let currentSieveSet = 'default';
-
-const TARGET_VALUES = { d10: 10, d16: 16, d30: 30, d50: 50, d60: 60, d80: 80, d84: 84 };
 let latestAnalysis = null;
-let passingChartInstance = null;
-let retainedChartInstance = null; // Add this line
-let weightChartInstance = null;
+let chartInstances = {};
 
-// --- DOM ELEMENTS ---
-const sieveInputsContainer = document.getElementById('sieve-inputs');
-const calculateBtn = document.getElementById('calculate-btn');
-const resetBtn = document.getElementById('reset-btn');
-const resultsContainer = document.getElementById('results-container');
-const welcomeContainer = document.getElementById('welcome-container');
-const summaryStatsContainer = document.getElementById('summary-stats');
-const analysisHelpContainer = document.getElementById('analysis-help-container');
-const generalAnalysisContainer = document.getElementById('general-analysis');
-const specificAnalysisContainer = document.getElementById('specific-analysis');
-const fab = document.getElementById('fab');
-const fabOptions = document.getElementById('fab-options');
-const exportExcelBtn = document.getElementById('export-excel-btn');
-const exportPdfFaBtn = document.getElementById('export-pdf-fa-btn');
-const exportPdfEnBtn = document.getElementById('export-pdf-en-btn');
+// --- 2. DOM ELEMENT CACHING ---
 
-// Predefined data buttons
-const loadCrusherBtn = document.getElementById('load-crusher-btn');
-const loadClayBtn = document.getElementById('load-clay-btn');
+const dom = {
+    // Input and controls
+    sieveInputsContainer: document.getElementById('sieve-inputs'),
+    calculateBtn: document.getElementById('calculate-btn'),
+    resetBtn: document.getElementById('reset-btn'),
 
-// Modal elements
-const manageSievesBtn = document.getElementById('manage-sieves-btn');
-const sieveModal = document.getElementById('sieve-modal');
-const sieveModalContent = sieveModal.querySelector('.bg-white');
-const closeModalBtn = document.getElementById('close-modal-btn');
-const addSieveBtn = document.getElementById('add-sieve-btn');
-const modalSieveList = document.getElementById('modal-sieve-list');
-const newSieveLabelInput = document.getElementById('new-sieve-label');
-const newSieveSizeInput = document.getElementById('new-sieve-size');
+    // Preset buttons
+    loadConcreteBtn: document.getElementById('load-concrete-btn'),
+    loadCrusherBtn: document.getElementById('load-crusher-btn'),
+    loadClayBtn: document.getElementById('load-clay-btn'),
 
-// --- UI RENDERING ---
-function renderSieveInputs() {
-    sieveInputsContainer.innerHTML = '';
-    sieves.sort((a, b) => (b.size ?? -1) - (a.size ?? -1));
-    sieves.forEach(sieve => {
-        const div = document.createElement('div');
-        div.className = 'flex items-center gap-4 animate-fade-in';
-        const label = document.createElement('label');
-        label.className = 'w-2/3 text-right text-gray-700';
-        label.textContent = `${sieve.label} (${sieve.size ?? 'سینی'} µm):`;
-        label.htmlFor = `sieve-${sieve.label}`;
+    // Results display
+    resultsContainer: document.getElementById('results-container'),
+    welcomeContainer: document.getElementById('welcome-container'),
+    summaryStatsContainer: document.getElementById('summary-stats'),
 
-        const input = document.createElement('input');
-        input.type = 'number';
-        input.id = `sieve-${sieve.label}`;
-        input.className = 'w-1/3 p-2 border rounded-md text-left focus:ring-2 focus:ring-purple-500 focus:border-purple-500';
-        input.placeholder = '0.0';
-        input.value = '0';
+    // Charts
+    passingChart: document.getElementById('passing-chart'),
+    retainedChart: document.getElementById('retained-chart'),
+    weightChart: document.getElementById('weight-chart'),
 
-        div.appendChild(label);
-        div.appendChild(input);
-        sieveInputsContainer.appendChild(div);
-    });
-}
+    // Analysis text
+    analysisHelpContainer: document.getElementById('analysis-help-container'),
+    generalAnalysisContainer: document.getElementById('general-analysis'),
+    specificAnalysisContainer: document.getElementById('specific-analysis'),
 
-function loadSieveSet(setName) {
-    currentSieveSet = setName;
-    sieves = [...PREDEFINED_SIEVES[setName]];
-    resetProgram();
-}
+    // FAB and Exports
+    fab: document.getElementById('fab'),
+    fabOptions: document.getElementById('fab-options'),
+    exportExcelBtn: document.getElementById('export-excel-btn'),
+    exportPdfFaBtn: document.getElementById('export-pdf-fa-btn'),
+    exportPdfEnBtn: document.getElementById('export-pdf-en-btn'),
 
-// --- CALCULATION LOGIC (Unchanged) ---
-function getFloat(value) {
-    const num = parseFloat(value);
-    return isNaN(num) ? 0.0 : num;
-}
+    // Modal
+    manageSievesBtn: document.getElementById('manage-sieves-btn'),
+    sieveModal: document.getElementById('sieve-modal'),
+    sieveModalContent: document.querySelector('#sieve-modal .bg-white'),
+    closeModalBtn: document.getElementById('close-modal-btn'),
+    addSieveBtn: document.getElementById('add-sieve-btn'),
+    modalSieveList: document.getElementById('modal-sieve-list'),
+    newSieveLabelInput: document.getElementById('new-sieve-label'),
+    newSieveSizeInput: document.getElementById('new-sieve-size'),
+};
 
-function linearInterpolation(target, points) {
-    if (!points || points.length === 0) return null;
-    points.sort((a,b) => b[0] - a[0]);
-    if (target >= points[0][0]) return points[0][1];
-    if (target <= points[points.length - 1][0]) return points[points.length - 1][1];
+// --- 3. CORE LOGIC & CALCULATIONS ---
 
-    for (let i = 0; i < points.length - 1; i++) {
-        const [p_high, d_high] = points[i];
-        const [p_low, d_low] = points[i + 1];
-        if (p_high >= target && target >= p_low) {
-            if (p_high - p_low === 0) return d_high;
-            const log_d_high = Math.log(d_high);
-            const log_d_low = Math.log(d_low);
-            const log_d_target = log_d_low + (target - p_low) * (log_d_high - log_d_low) / (p_high - p_low);
-            return Math.exp(log_d_target);
-        }
-    }
-    return null;
-}
+function linearInterpolate(x, x_points, y_points) {
+    if (!x_points || x_points.length < 2) return null;
+    let i = 1;
+    while (i < x_points.length && x_points[i] < x) i++;
+    if (i === 0 || i === x_points.length) return null; // x is out of range
+    const x1 = x_points[i - 1], y1 = y_points[i - 1];
+    const x2 = x_points[i], y2 = y_points[i];
+    if (x1 === x2) return y1;
+    return y1 + (x - x1) * (y2 - y1) / (x2 - x1);
+};
 
-function performAnalysis() {
-    const weights = sieves.map(sieve => getFloat(document.getElementById(`sieve-${sieve.label}`).value));
-    const totalWeight = weights.reduce((sum, w) => sum + w, 0);
-
+function performAnalysis(sieveData) {
+    const totalWeight = sieveData.reduce((sum, s) => sum + s.weight, 0);
     if (totalWeight === 0) {
-        alert('مجموع وزن‌ها نمی‌تواند صفر باشد.');
-        return;
+        alert("Total weight cannot be zero.");
+        return null;
     }
 
-    const percents = weights.map(w => (w / totalWeight) * 100);
-    const cumRetained = [];
-    let cum = 0.0;
-    percents.forEach(p => {
-        cum += p;
-        cumRetained.push(cum);
-    });
-    const percentPassing = cumRetained.map(cr => 100 - cr);
+    let cumulativeRetained = 0;
+    const table = sieveData.map(sieve => {
+        const percent_retained = (sieve.weight / totalWeight) * 100;
+        cumulativeRetained += percent_retained;
+        return { ...sieve, percent_retained, cumulative_retained };
+    }).map(sieve => ({
+        ...sieve,
+        percent_passing: Math.max(0, 100 - sieve.cumulative_retained)
+    }));
 
-    const interpPoints = [];
-    sieves.forEach((sieve, i) => {
-        if (sieve.size !== null) {
-            interpPoints.push([percentPassing[i], sieve.size]);
-        }
-    });
+    const interpPoints = table.filter(s => s.size !== null).map(s => ({ x: s.percent_passing, y: Math.log(s.size) })).sort((a, b) => a.x - b.x);
+    const known_percents = interpPoints.map(p => p.x);
+    const known_log_sizes = interpPoints.map(p => p.y);
 
     const dValues = {};
-    for (const key in TARGET_VALUES) {
-        dValues[key] = linearInterpolation(TARGET_VALUES[key], interpPoints);
+    const TARGET_D_VALUES = { d10: 10, d16: 16, d30: 30, d50: 50, d60: 60, d80: 80, d84: 84 };
+    for (const key in TARGET_D_VALUES) {
+        const percent = TARGET_D_VALUES[key];
+        const log_d = linearInterpolate(percent, known_percents, known_log_sizes);
+        dValues[key] = log_d ? Math.exp(log_d) : null;
     }
 
-    let Cu = null;
-    if (dValues.d10 && dValues.d10 > 0 && dValues.d60) {
-        Cu = dValues.d60 / dValues.d10;
-    }
+    const { d10, d16, d30, d60, d84 } = dValues;
+    const Cu = (d10 && d60 && d10 > 0) ? d60 / d10 : null;
+    const Cc = (d10 && d30 && d60 && d10 > 0) ? (Math.pow(d30, 2) / (d10 * d60)) : null;
+    const std_dev = (d16 && d84) ? (d84 - d16) / 2 : null;
 
-    let Cc = null;
-    if (dValues.d10 && dValues.d60 && dValues.d30 && dValues.d10 > 0 && dValues.d60 > 0) {
-        Cc = Math.pow(dValues.d30, 2) / (dValues.d10 * dValues.d60);
-    }
+    const fmSieveSizes = [9500, 4750, 2360, 1180, 600, 300, 150];
+    const relevantSieves = table.filter(s => fmSieveSizes.includes(s.size));
+    const sumOfCumulativeRetained = relevantSieves.reduce((sum, s) => sum + s.cumulative_retained, 0);
+    const fm = sumOfCumulativeRetained > 0 ? sumOfCumulativeRetained / 100 : null;
 
-    const std_dev_geotechnical = (dValues.d16 && dValues.d84) ? (dValues.d84 - dValues.d16) / 2 : null;
+    const analysisText = generateAnalysisText({ dValues, Cu, Cc, fm, std_dev }, table);
 
-    // Create a temporary data structure for fineness modulus calculation
-    const fineness_modulus_data = sieves.map((sieve, i) => ({
-        size: sieve.size,
-        cumulative_retained: cumRetained[i]
-    }));
-    const fineness_modulus = (currentSieveSet === 'concrete') ? calculateFinenessModulusClientSide(fineness_modulus_data) : null;
-
-    latestAnalysis = {
-        sieves, weights, percents, cumRetained, percentPassing, dValues, Cu, Cc, totalWeight,
-        std_dev_geotechnical, fineness_modulus
+    const results = {
+        table,
+        summary: { dValues, Cu, Cc, fm, std_dev, totalWeight, analysisText }
     };
 
-    displayResults();
-    displayAnalysisHelp();
+    latestAnalysis = results;
+    return results;
 }
 
-/**
- * Calculates the Fineness Modulus (FM) for concrete aggregate analysis.
- * This is a helper function restored from a previous version.
- * @param {Array<object>} data - The full analysis data table.
- * @returns {number|null} - The calculated Fineness Modulus or null.
- */
-function calculateFinenessModulusClientSide(data) {
-    const standardSizes = [9500, 4750, 2360, 1180, 600, 300, 150];
-    const sievesWithSizes = data.filter(s => s.size !== null).sort((a, b) => a.size - b.size);
-    if (sievesWithSizes.length === 0) return null;
+function generateAnalysisText(summary, table) {
+    let generalText = "";
+    let specificText = "";
+    const { dValues, Cu, Cc, fm } = summary;
+    const no200Sieve = table.find(s => s.size === 75);
+    const percentFines = no200Sieve ? no200Sieve.percent_passing : 0;
 
-    let sum_cum_retained = 0;
-    standardSizes.forEach(stdSize => {
-        // Find the closest sieve size in the data (asof merge equivalent)
-        let closestSieve = null;
-        for (const sieve of sievesWithSizes) {
-            if (sieve.size <= stdSize) {
-                closestSieve = sieve;
-            } else {
-                break;
-            }
-        }
-        if (closestSieve) {
-            sum_cum_retained += closestSieve.cumulative_retained;
-        }
-    });
+    if (percentFines < 50) {
+        generalText += "<strong>Soil Classification (USCS - Coarse Grained):</strong>";
+        const no4Sieve = table.find(s => s.size === 4750);
+        const percentCoarse = 100 - percentFines;
+        const percentGravel = no4Sieve ? no4Sieve.cumulative_retained : 0;
+        const percentSand = percentCoarse - percentGravel;
 
-    return sum_cum_retained > 0 ? sum_cum_retained / 100 : null;
-}
-
-function displayAnalysisHelp() {
-    const { Cu, Cc, std_dev_geotechnical, fineness_modulus } = latestAnalysis;
-
-    let generalLines = ["<strong>تحلیل دانه‌بندی (Gradation):</strong>"];
-    if (Cu != null && Cc != null) {
-        if (Cu >= 4 && Cc >= 1 && Cc <= 3) {
-            generalLines.push(`<li>مقادیر Cu (${Cu.toFixed(2)}) و Cc (${Cc.toFixed(2)}) نشان‌دهنده یک خاک <strong>خوب دانه‌بندی شده (Well-Graded)</strong> است.</li>`);
+        if (percentGravel > percentSand) {
+            if (Cu >= 4 && (Cc >= 1 && Cc <= 3)) generalText += "<li>Classification: <strong>GW (Well-Graded Gravel)</strong></li>";
+            else generalText += "<li>Classification: <strong>GP (Poorly-Graded Gravel)</strong></li>";
         } else {
-            generalLines.push(`<li>مقادیر Cu (${Cu.toFixed(2)}) و Cc (${Cc.toFixed(2)}) نشان‌دهنده یک خاک <strong>بد دانه‌بندی شده (Poorly-Graded)</strong> است.</li>`);
+            if (Cu >= 6 && (Cc >= 1 && Cc <= 3)) generalText += "<li>Classification: <strong>SW (Well-Graded Sand)</strong></li>";
+            else generalText += "<li>Classification: <strong>SP (Poorly-Graded Sand)</strong></li>";
         }
+        generalText += `<li>Coefficient of Uniformity (Cu): <strong>${Cu?.toFixed(2) ?? 'N/A'}</strong></li>`;
+        generalText += `<li>Coefficient of Curvature (Cc): <strong>${Cc?.toFixed(2) ?? 'N/A'}</strong></li>`;
+        if (percentFines > 12) generalText += "<li class='mt-2 text-sm'>Note: High fines content (>12%). Full classification requires Atterberg limits.</li>";
     } else {
-        generalLines.push("<li>مقادیر Cu و Cc برای تعیین دقیق نوع دانه‌بندی کافی نبود.</li>");
-    }
-    generalLines.push("<br><strong>تحلیل یکنواختی (Sorting):</strong>");
-    if (std_dev_geotechnical != null) {
-        generalLines.push(`<li>انحراف معیار نمونه برابر با <strong>${std_dev_geotechnical.toFixed(2)} میکرون</strong> است.</li>`);
-    } else {
-        generalLines.push("<li>انحراف معیار قابل محاسبه نبود.</li>");
+        generalText = "<strong>Soil Classification:</strong> This is a <strong>Fine-Grained Soil</strong>. Classification requires Atterberg limits.";
     }
 
-    generalAnalysisContainer.innerHTML = generalLines.join("\n");
-
-    let specificText = '';
-    if (currentSieveSet === 'concrete' && fineness_modulus != null) {
-        specificText = `<strong>تحلیل سنگدانه بتن:</strong> مدول نرمی (FM) <strong>${fineness_modulus.toFixed(2)}</strong> محاسبه شد. `;
-        if (fineness_modulus >= 2.3 && fineness_modulus <= 3.1) {
-            specificText += 'این مقدار در بازه استاندارد (2.3 تا 3.1) برای ماسه بتن قرار دارد.';
-        } else {
-            specificText += 'این مقدار خارج از بازه استاندارد است.';
+    if (currentSieveSet === 'concrete') {
+        specificText = "<strong>Concrete Aggregate Analysis:</strong>";
+        if (fm) {
+            specificText += `<li>Fineness Modulus (FM) is <strong>${fm.toFixed(2)}</strong>.</li>`;
+            if (fm >= 2.3 && fm <= 3.1) specificText += "<li>This is within the typical range (2.3-3.1) for fine aggregate (ASTM C33).</li>";
+            else if (fm < 2.3) specificText += "<li>This indicates a fine sand.</li>";
+            else specificText += "<li>This indicates a coarse sand.</li>";
         }
     } else if (currentSieveSet === 'crusher') {
-        specificText = '<strong>تحلیل نمونه سنگ شکن:</strong> این نمونه معرف خوراک ورودی به سنگ‌شکن‌ها یا محصول خروجی آن‌هاست. توزیع گسترده ذرات (Cu بالا) معمولاً مطلوب است تا فضای خالی بین ذرات بزرگ توسط ذرات کوچکتر پر شود و تراکم هیپ افزایش یابد.';
-    } else if (currentSieveSet === 'clay') {
-        specificText = '<strong>تحلیل نمونه رس:</strong> این نمونه دارای درصد بالایی از ذرات بسیار ریز است. مقادیر بالای ذرات ریز (مثلاً زیر 75 میکرون) می‌تواند نفوذپذیری هیپ را به شدت کاهش داده و باعث ایجاد مشکلاتی مانند کانالیزه شدن محلول و کاهش راندمان لیچینگ شود.';
+        specificText = "<strong>Heap Leaching Analysis:</strong>";
+        if (dValues.d80) {
+            const d80_mm = dValues.d80 / 1000;
+            specificText += `<li>D80 is <strong>${d80_mm.toFixed(1)} mm</strong>.</li>`;
+            if (d80_mm > 5 && d80_mm < 25) specificText += "<li>This size is generally optimal, balancing permeability and recovery.</li>";
+            else if (d80_mm <= 5) specificText += "<li>Fine particle size may risk reducing heap permeability.</li>";
+            else specificText += "<li>Coarse particle size may reduce recovery rates.</li>";
+        }
     }
+    return { general: generalText, specific: specificText };
+}
 
-    if (specificText) {
-        specificAnalysisContainer.innerHTML = specificText;
-        specificAnalysisContainer.classList.remove('hidden');
+
+// --- 4. UI RENDERING & UPDATES ---
+
+function renderSieveInputs() {
+    dom.sieveInputsContainer.innerHTML = '';
+    currentSieves.sort((a, b) => (b.size ?? -1) - (a.size ?? -1)).forEach(sieve => {
+        const div = document.createElement('div');
+        div.className = 'flex items-center gap-4 animate-fade-in';
+        div.innerHTML = `
+            <label for="sieve-${sieve.label}" class="w-2/3 text-right text-gray-700">${sieve.label} (${sieve.size ?? 'Pan'} µm):</label>
+            <input type="number" id="sieve-${sieve.label}" class="w-1/3 p-2 border rounded-md text-left focus:ring-2 focus:ring-purple-500" placeholder="0.0" value="0">
+        `;
+        dom.sieveInputsContainer.appendChild(div);
+    });
+}
+
+function updateUI() {
+    if (!latestAnalysis) return;
+    renderSummaryStats();
+    renderAnalysisText();
+    renderCharts();
+    dom.resultsContainer.classList.remove('hidden');
+    dom.welcomeContainer.classList.add('hidden');
+    dom.fab.style.display = 'flex';
+}
+
+function renderSummaryStats() {
+    const { dValues, Cu, Cc, fm, totalWeight } = latestAnalysis.summary;
+    const stats = [
+        { label: 'D10', value: dValues.d10?.toFixed(2) }, { label: 'D30', value: dValues.d30?.toFixed(2) },
+        { label: 'D60', value: dValues.d60?.toFixed(2) }, { label: 'D80', value: dValues.d80?.toFixed(2) },
+        { label: 'Cu', value: Cu?.toFixed(2) }, { label: 'Cc', value: Cc?.toFixed(2) },
+        { label: 'FM', value: fm?.toFixed(2) }, { label: 'Total Wt (g)', value: totalWeight?.toFixed(2) }
+    ];
+    dom.summaryStatsContainer.innerHTML = stats.map(stat => `
+        <div class="bg-gray-100 p-3 rounded-lg">
+            <p class="text-sm text-gray-500">${stat.label}</p>
+            <p class="text-xl font-bold text-gray-800">${stat.value ?? 'N/A'}</p>
+        </div>
+    `).join('');
+}
+
+function renderAnalysisText() {
+    const { general, specific } = latestAnalysis.summary.analysisText;
+    dom.generalAnalysisContainer.innerHTML = general;
+    if (specific) {
+        dom.specificAnalysisContainer.innerHTML = specific;
+        dom.specificAnalysisContainer.classList.remove('hidden');
     } else {
-        specificAnalysisContainer.classList.add('hidden');
+        dom.specificAnalysisContainer.classList.add('hidden');
     }
-
-    analysisHelpContainer.classList.remove('hidden');
+    dom.analysisHelpContainer.classList.remove('hidden');
 }
 
-function displayResults() {
-    welcomeContainer.classList.add('hidden');
-    resultsContainer.classList.remove('hidden');
-
-    summaryStatsContainer.innerHTML = `
-        <div class="bg-gray-100 p-3 rounded-lg"><p class="text-sm text-gray-500">D10</p><p class="text-xl font-bold text-gray-800">${latestAnalysis.dValues.d10?.toFixed(2) ?? 'N/A'}</p></div>
-        <div class="bg-gray-100 p-3 rounded-lg"><p class="text-sm text-gray-500">D30</p><p class="text-xl font-bold text-gray-800">${latestAnalysis.dValues.d30?.toFixed(2) ?? 'N/A'}</p></div>
-        <div class="bg-gray-100 p-3 rounded-lg"><p class="text-sm text-gray-500">D50</p><p class="text-xl font-bold text-gray-800">${latestAnalysis.dValues.d50?.toFixed(2) ?? 'N/A'}</p></div>
-        <div class="bg-gray-100 p-3 rounded-lg"><p class="text-sm text-gray-500">D60</p><p class="text-xl font-bold text-gray-800">${latestAnalysis.dValues.d60?.toFixed(2) ?? 'N/A'}</p></div>
-        <div class="bg-gray-100 p-3 rounded-lg"><p class="text-sm text-gray-500">D80</p><p class="text-xl font-bold text-gray-800">${latestAnalysis.dValues.d80?.toFixed(2) ?? 'N/A'}</p></div>
-        <div class="bg-gray-100 p-3 rounded-lg"><p class="text-sm text-gray-500">Cu</p><p class="text-xl font-bold text-gray-800">${latestAnalysis.Cu?.toFixed(2) ?? 'N/A'}</p></div>
-        <div class="bg-gray-100 p-3 rounded-lg"><p class="text-sm text-gray-500">Cc</p><p class="text-xl font-bold text-gray-800">${latestAnalysis.Cc?.toFixed(2) ?? 'N/A'}</p></div>
-        <div class="bg-gray-100 p-3 rounded-lg"><p class="text-sm text-gray-500">Total Weight</p><p class="text-xl font-bold text-gray-800">${latestAnalysis.totalWeight?.toFixed(2) ?? 'N/A'} g</p></div>
-    `;
-
-    updateCharts();
-}
-
-function updateCharts() {
-    const passingCtx = document.getElementById('passing-chart').getContext('2d');
-    const passingData = sieves
-        .map((s, i) => ({ x: s.size, y: latestAnalysis.percentPassing[i] }))
-        .filter(d => d.x !== null)
-        .sort((a,b) => a.x - b.x);
-
-    if (passingChartInstance) passingChartInstance.destroy();
-    passingChartInstance = new Chart(passingCtx, {
-        type: 'line',
-        data: {
-            datasets: [{
-                label: 'درصد عبوری',
-                data: passingData,
-                borderColor: '#673ab7',
-                backgroundColor: 'rgba(103, 58, 183, 0.2)',
-                fill: true,
-                tension: 0.4
-            }]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            scales: {
-                x: { type: 'logarithmic', title: { display: false } },
-                y: { beginAtZero: true, max: 100, title: { display: true, text: 'درصد عبوری (%)' } }
-            }
+function renderCharts() {
+    const createOrUpdateChart = (id, config) => {
+        const ctx = document.getElementById(id).getContext('2d');
+        if (chartInstances[id]) {
+            chartInstances[id].destroy();
         }
+        chartInstances[id] = new Chart(ctx, config);
+    };
+
+    const table = latestAnalysis.table;
+    const passingData = table.filter(d => d.size !== null).map(d => ({ x: d.size, y: d.percent_passing })).sort((a,b) => a.x - b.x);
+    const retainedData = table.filter(d => d.size !== null).map(d => ({ x: d.size, y: d.cumulative_retained })).sort((a,b) => a.x - b.x);
+    const weightData = table.filter(d => d.size !== null);
+
+    createOrUpdateChart('passing-chart', {
+        type: 'line',
+        data: { datasets: [{ label: 'Percent Passing', data: passingData, borderColor: '#673ab7', backgroundColor: 'rgba(103, 58, 183, 0.2)', fill: true, tension: 0.4 }] },
+        options: { responsive: true, maintainAspectRatio: false, scales: { x: { type: 'logarithmic', title: { display: true, text: 'Sieve Size (µm)' } }, y: { beginAtZero: true, max: 100, title: { display: true, text: 'Percent (%)' } } } }
     });
 
-    const retainedCtx = document.getElementById('retained-chart').getContext('2d');
-    const retainedData = sieves
-        .map((s, i) => ({ x: s.size, y: latestAnalysis.cumRetained[i] }))
-        .filter(d => d.x !== null)
-        .sort((a,b) => a.x - b.x);
-
-    if (retainedChartInstance) retainedChartInstance.destroy();
-    retainedChartInstance = new Chart(retainedCtx, {
+    createOrUpdateChart('retained-chart', {
         type: 'line',
-        data: {
-            datasets: [{
-                label: 'درصد تجمعی مانده',
-                data: retainedData,
-                borderColor: '#c2185b',
-                backgroundColor: 'rgba(233, 30, 99, 0.2)',
-                fill: true,
-                tension: 0.4
-            }]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            scales: {
-                x: { type: 'logarithmic', title: { display: false } },
-                y: { beginAtZero: true, max: 100, title: { display: true, text: 'درصد تجمعی مانده (%)' } }
-            }
-        }
+        data: { datasets: [{ label: 'Cumulative Retained', data: retainedData, borderColor: '#c2185b', backgroundColor: 'rgba(233, 30, 99, 0.2)', fill: true, tension: 0.4 }] },
+        options: { responsive: true, maintainAspectRatio: false, scales: { x: { type: 'logarithmic', title: { display: true, text: 'Sieve Size (µm)' } }, y: { beginAtZero: true, max: 100, title: { display: true, text: 'Percent (%)' } } } }
     });
 
-    const weightCtx = document.getElementById('weight-chart').getContext('2d');
-    const weightData = sieves.filter(s => s.size !== null);
-    if (weightChartInstance) weightChartInstance.destroy();
-    weightChartInstance = new Chart(weightCtx, {
+    createOrUpdateChart('weight-chart', {
         type: 'bar',
-        data: {
-            labels: weightData.map(s => s.label),
-            datasets: [{
-                label: 'وزن باقی‌مانده (گرم)',
-                data: latestAnalysis.weights.slice(0, weightData.length),
-                backgroundColor: 'rgba(255, 152, 0, 0.8)',
-                borderColor: '#ff9800',
-                borderWidth: 1
-            }]
-        },
+        data: { labels: weightData.map(d => d.label), datasets: [{ label: 'Weight Retained (g)', data: weightData.map(d => d.weight), backgroundColor: 'rgba(255, 152, 0, 0.8)' }] },
         options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
     });
 }
 
-function resetProgram() {
-    renderSieveInputs();
+function resetUI() {
+    dom.resultsContainer.classList.add('hidden');
+    dom.welcomeContainer.classList.remove('hidden');
+    Object.values(chartInstances).forEach(chart => chart.destroy());
+    chartInstances = {};
     latestAnalysis = null;
-    resultsContainer.classList.add('hidden');
-    welcomeContainer.classList.remove('hidden');
-    if (passingChartInstance) passingChartInstance.destroy();
-    if (retainedChartInstance) retainedChartInstance.destroy();
-    if (weightChartInstance) weightChartInstance.destroy();
-    fabOptions.classList.remove('active');
+    dom.fab.style.display = 'none';
+    dom.fabOptions.classList.remove('active');
 }
 
-// --- EXCEL EXPORT ---
+// --- 5. MODAL & EXPORT LOGIC ---
+
+function renderModalSieveList() {
+    dom.modalSieveList.innerHTML = '';
+    currentSieves.sort((a, b) => (b.size ?? -1) - (a.size ?? -1)).forEach(sieve => {
+        const item = document.createElement('div');
+        item.className = 'flex justify-between items-center p-2 border-b';
+        item.innerHTML = `
+            <span>${sieve.label} (${sieve.size ?? 'Pan'} µm)</span>
+            ${sieve.size !== null ? `<button data-label="${sieve.label}" class="delete-sieve-btn text-red-500 hover:text-red-700">Delete</button>` : ''}
+        `;
+        dom.modalSieveList.appendChild(item);
+    });
+}
+
 async function exportToExcel() {
     if (!latestAnalysis) {
-        alert('ابتدا تحلیل را انجام دهید.');
+        alert("Please perform analysis before exporting.");
         return;
     }
 
-    try {
-        const workbook = new ExcelJS.Workbook();
-        workbook.creator = 'Sieve Analysis Web App';
-        workbook.created = new Date();
-        workbook.views = [{
-            x: 0, y: 0, width: 10000, height: 20000,
-            firstSheet: 0, activeTab: 0, visibility: 'visible',
-            rtl: true
-        }];
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Sieve Analysis Web App';
+    workbook.created = new Date();
+    workbook.views = [{ rtl: true }];
 
-        // --- SUMMARY SHEET ---
-        const summarySheet = workbook.addWorksheet('خلاصه نتایج');
-        summarySheet.views = [{ rtl: true }];
-        summarySheet.columns = [
-            { header: 'پارامتر', key: 'param', width: 25 },
-            { header: 'مقدار', key: 'value', width: 20, style: { numFmt: '#,##0.00' } }
-        ];
-        const summaryData = [
-            { param: 'تاریخ گزارش', value: moment().locale('fa').format('YYYY/MM/DD') },
-            { param: 'D10 (µm)', value: latestAnalysis.dValues.d10 },
-            { param: 'D30 (µm)', value: latestAnalysis.dValues.d30 },
-            { param: 'D50 (µm)', value: latestAnalysis.dValues.d50 },
-            { param: 'D60 (µm)', value: latestAnalysis.dValues.d60 },
-            { param: 'D80 (µm)', value: latestAnalysis.dValues.d80 },
-            { param: 'Cu (ضریب یکنواختی)', value: latestAnalysis.Cu },
-            { param: 'Cc (ضریب انحنا)', value: latestAnalysis.Cc },
-            { param: 'مجموع وزن (گرم)', value: latestAnalysis.totalWeight },
-        ];
-        summarySheet.addRows(summaryData);
+    // --- Summary Sheet ---
+    const summarySheet = workbook.addWorksheet('Summary');
+    summarySheet.views = [{ rtl: true }];
 
-        // --- RAW DATA SHEET ---
-        const dataSheetName = 'داده‌های خام';
-        const dataSheet = workbook.addWorksheet(dataSheetName);
-        dataSheet.views = [{ rtl: true }];
-        dataSheet.columns = [
-            { header: 'سرند', key: 'label', width: 15 },
-            { header: 'اندازه (میکرون)', key: 'size', width: 20 },
-            { header: 'وزن (گرم)', key: 'weight', width: 15, style: { numFmt: '#,##0.00' } },
-            { header: 'درصد نگه‌داری', key: 'percent', width: 18, style: { numFmt: '0.00"%"' } },
-            { header: 'درصد تجمعی نگه‌داری', key: 'cumRetained', width: 25, style: { numFmt: '0.00"%"' } },
-            { header: 'درصد عبوری', key: 'percentPassing', width: 18, style: { numFmt: '0.00"%"' } },
-        ];
+    const { summary, table } = latestAnalysis;
+    const { dValues, Cu, Cc, fm, totalWeight, analysisText } = summary;
 
-        latestAnalysis.sieves.forEach((sieve, i) => {
-            dataSheet.addRow({
-                label: sieve.label,
-                size: sieve.size,
-                weight: latestAnalysis.weights[i],
-                percent: latestAnalysis.percents[i],
-                cumRetained: latestAnalysis.cumRetained[i],
-                percentPassing: latestAnalysis.percentPassing[i]
-            });
-        });
+    summarySheet.mergeCells('A1:D1');
+    const titleCell = summarySheet.getCell('A1');
+    titleCell.value = 'Sieve Analysis Report';
+    titleCell.font = { size: 16, bold: true };
+    titleCell.alignment = { horizontal: 'center' };
+    summarySheet.addRow([]);
 
-        // --- CHART (Resilient Implementation) ---
-        try {
-            // This block adds the chart but won't stop the export if it fails.
-            const chartDataRows = latestAnalysis.sieves.filter(s => s.size !== null).length + 1;
+    const summaryData = [
+        ['D10 (µm)', dValues.d10], ['D30 (µm)', dValues.d30],
+        ['D60 (µm)', dValues.d60], ['D80 (µm)', dValues.d80],
+        ['Cu', Cu], ['Cc', Cc],
+        ['Fineness Modulus (FM)', fm], ['Total Weight (g)', totalWeight]
+    ];
 
-            if (chartDataRows > 1) { // Ensure there is data to chart
-                const chartSheet = workbook.getWorksheet(dataSheetName);
-                const chart = chartSheet.addChart({
-                    type: 'scatter',
-                    style: 'smoothMarker',
-                    title: 'نمودار توزیع دانه‌بندی',
-                    xTitle: 'اندازه سرند (میکرون) - مقیاس لگاریتمی',
-                    yTitle: 'درصد عبوری (%)',
-                    legend: { position: 'none' },
-                });
-
-                chart.addSeries({
-                    name: 'درصد عبوری',
-                    x: { source: `${dataSheetName}!$B$2:$B$${chartDataRows}` },
-                    y: { source: `${dataSheetName}!$F$2:$F$${chartDataRows}` },
-                });
-
-                chart.primaryAxis.logBase = 10;
-
-                chart.anchor = {
-                    from: { col: 7.5, row: 2 },
-                    to: { col: 15, row: 20 },
-                };
+    summaryData.forEach(row => {
+        if(row[1] !== null && typeof row[1] !== 'undefined') {
+            const addedRow = summarySheet.addRow(row);
+            if(typeof row[1] === 'number') {
+                addedRow.getCell(2).numFmt = '0.00';
             }
-        } catch (chartError) {
-            console.error("Could not add chart to Excel file, but continuing with data export.", chartError);
-            alert("توجه: نمودار به فایل اکسل اضافه نشد زیرا خطایی رخ داد.");
         }
-
-
-        // --- GENERATE AND DOWNLOAD FILE ---
-        const buffer = await workbook.xlsx.writeBuffer();
-        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        saveAs(blob, 'آنالیز-سرندی.xlsx');
-
-    } catch (error) {
-        console.error("Error exporting to Excel:", error);
-        alert("متاسفانه در ایجاد فایل اکسل خطایی رخ داد. لطفا دوباره امتحان کنید.");
-    }
-}
-
-// --- MODAL LOGIC ---
-function renderModalSieveList() {
-    modalSieveList.innerHTML = '';
-    sieves.forEach(sieve => {
-        const row = document.createElement('div');
-        row.className = 'flex justify-between items-center p-2 border-b';
-        row.innerHTML = `<span>${sieve.label} (${sieve.size ?? 'سینی'} µm)</span>`;
-        if (sieve.label !== 'سینی') {
-            const removeBtn = document.createElement('button');
-            removeBtn.textContent = 'حذف';
-            removeBtn.className = 'text-red-500 hover:text-red-700 font-semibold';
-            removeBtn.onclick = () => {
-                sieves = sieves.filter(s => s.label !== sieve.label);
-                renderModalSieveList();
-                renderSieveInputs();
-            };
-            row.appendChild(removeBtn);
-        }
-        modalSieveList.appendChild(row);
     });
-}
+    summarySheet.addRow([]);
 
-manageSievesBtn.addEventListener('click', () => {
-    renderModalSieveList();
-    sieveModal.classList.add('active');
-    setTimeout(() => sieveModalContent.classList.remove('scale-95', 'opacity-0'), 10);
-});
-
-closeModalBtn.addEventListener('click', () => {
-    sieveModalContent.classList.add('scale-95', 'opacity-0');
-    setTimeout(() => sieveModal.classList.remove('active'), 300);
-});
-
-addSieveBtn.addEventListener('click', () => {
-    const label = newSieveLabelInput.value.trim();
-    const size = newSieveSizeInput.value.trim();
-    if (!label) { alert('لطفاً نام سرند را وارد کنید.'); return; }
-    const sizeValue = size === '' ? null : getFloat(size);
-    if (sieves.find(s => s.label === label)) { alert('سرندی با این نام از قبل وجود دارد.'); return; }
-    sieves.push({ label, size: sizeValue });
-    newSieveLabelInput.value = '';
-    newSieveSizeInput.value = '';
-    renderModalSieveList();
-    renderSieveInputs();
-});
-
-// --- EVENT LISTENERS ---
-function setupEventListeners() {
-    calculateBtn.addEventListener('click', performAnalysis);
-    resetBtn.addEventListener('click', () => loadSieveSet('default'));
-    loadCrusherBtn.addEventListener('click', () => loadSieveSet('crusher'));
-    loadClayBtn.addEventListener('click', () => loadSieveSet('clay'));
-    document.getElementById('load-concrete-btn').addEventListener('click', () => loadSieveSet('concrete'));
-
-    fab.addEventListener('click', () => {
-    if (!latestAnalysis) {
-        alert('ابتدا باید محاسبات را انجام دهید تا بتوانید خروجی بگیرید.');
-        return;
-    }
-    fabOptions.classList.toggle('active');
-});
-
-fabOptions.addEventListener('click', (event) => {
-    const target = event.target.closest('.fab-option');
-    if (!target) return;
-
-    const action = target.id;
-
-    if (action === 'export-excel-btn') {
-        exportToExcel();
-    } else if (action === 'export-pdf-fa-btn') {
-        exportToPDF();
-    } else if (action === 'export-pdf-en-btn') {
-        exportToPDF_EN();
+    const cleanText = (html) => html.replace(/<br>/g, '\n').replace(/<[^>]*>/g, '').trim();
+    summarySheet.addRow(['Analysis Interpretation']).getCell(1).font = { bold: true };
+    const generalCell = summarySheet.addRow([cleanText(analysisText.general)]);
+    generalCell.getCell(1).alignment = { wrapText: true };
+    if(analysisText.specific) {
+        const specificCell = summarySheet.addRow([cleanText(analysisText.specific)]);
+        specificCell.getCell(1).alignment = { wrapText: true };
     }
 
-    // Hide the options menu after a selection is made
-    fabOptions.classList.remove('active');
-    });
+    const chartImage = chartInstances['passing-chart'].toBase64Image();
+    const imageId = workbook.addImage({ base64: chartImage, extension: 'png' });
+    summarySheet.addImage(imageId, 'F2:M20');
+
+    // --- Raw Data Sheet ---
+    const dataSheet = workbook.addWorksheet('Raw Data');
+    dataSheet.views = [{ rtl: true }];
+    dataSheet.columns = [
+        { header: 'Sieve', key: 'label', width: 20 },
+        { header: 'Size (µm)', key: 'size', width: 15 },
+        { header: 'Weight Retained (g)', key: 'weight', width: 20, style: { numFmt: '0.00' } },
+        { header: 'Percent Retained (%)', key: 'percent_retained', width: 20, style: { numFmt: '0.00' } },
+        { header: 'Cumulative Retained (%)', key: 'cumulative_retained', width: 25, style: { numFmt: '0.00' } },
+        { header: 'Percent Passing (%)', key: 'percent_passing', width: 20, style: { numFmt: '0.00' } },
+    ];
+    dataSheet.addRows(table);
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), 'Sieve-Analysis-Report.xlsx');
 }
 
-// --- PDF EXPORT ---
-async function exportToPDF() {
+async function exportToPDF(lang = 'fa') {
     if (!latestAnalysis) {
-        alert('ابتدا تحلیل را انجام دهید.');
+        alert("Please perform analysis before exporting.");
         return;
     }
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
+    const { summary, table } = latestAnalysis;
+    const { dValues, Cu, Cc, fm, totalWeight, analysisText } = summary;
 
-    // Helper function to reshape Persian text if the library is loaded
-    const reshape = (text, reverse = false) => {
-        let reshapedText = String(text);
-        if (typeof arabicReshaper !== 'undefined') {
-            reshapedText = arabicReshaper.reshape(reshapedText);
-        }
-        if (reverse) {
-            reshapedText = reshapedText.split('').reverse().join('');
-        }
-        return reshapedText;
-    };
-
+    // --- Font Loading ---
     try {
-        // 1. Fetch Vazirmatn font
-        const fontURL = 'https://raw.githubusercontent.com/rastikerdar/vazirmatn/v33.003/fonts/ttf/Vazirmatn-Regular.ttf';
+        const fontURL = 'http://talashmotorcycle.com/css/fonts/nazanin/BNAZANIN.TTF';
         const fontResponse = await fetch(fontURL);
-        if (!fontResponse.ok) throw new Error('Network response was not ok');
+        if (!fontResponse.ok) throw new Error('Font file could not be downloaded.');
         const fontBuffer = await fontResponse.arrayBuffer();
 
-        // Convert ArrayBuffer to Base64 string
         let binary = '';
         const bytes = new Uint8Array(fontBuffer);
         for (let i = 0; i < bytes.byteLength; i++) {
@@ -596,172 +416,206 @@ async function exportToPDF() {
         }
         const fontBase64 = btoa(binary);
 
-        // 2. Add font to jsPDF
-        doc.addFileToVFS('Vazirmatn-Regular.ttf', fontBase64);
-        doc.addFont('Vazirmatn-Regular.ttf', 'Vazirmatn', 'normal');
-        doc.setFont('Vazirmatn');
-
+        doc.addFileToVFS('BNazanin.ttf', fontBase64);
+        doc.addFont('BNazanin.ttf', 'BNazanin', 'normal');
+        doc.setFont('BNazanin');
     } catch (error) {
         console.error("Font loading failed, falling back to default font:", error);
-        alert("خطا در بارگزاری فونت فارسی. PDF با فونت پیش‌فرض ساخته می‌شود.");
+        alert("Font could not be loaded. PDF will be generated with a default font.");
     }
 
-    // 3. Add Content
-    doc.setR2L(true); // Enable Right-to-Left mode
-    doc.setFontSize(22);
-    doc.text(reshape('آنالیز سرندی', true), 105, 20, { align: 'center' });
-
-    const jalaliDate = reshape(`تاریخ گزارش: ${moment().locale('fa').format('YYYY/MM/DD')}`);
-    doc.setFontSize(10);
-    doc.text(jalaliDate, 105, 28, { align: 'center' });
-
-    doc.setFontSize(12);
-    doc.text(reshape(`مجموع وزن کل: ${latestAnalysis.totalWeight.toFixed(2)} گرم`), 105, 38, { align: 'center' });
-
-    // 4. Add Charts as Images
-    const passingChartImg = passingChartInstance.canvas.toDataURL('image/jpeg', 0.8);
-    const weightChartImg = weightChartInstance.canvas.toDataURL('image/jpeg', 0.8);
-
-    doc.addImage(passingChartImg, 'JPEG', 15, 45, 180, 80);
-    doc.addImage(weightChartImg, 'JPEG', 15, 130, 180, 80);
-
-    // 5. Add Summary Table
-    const summaryHead = [[reshape('مقدار', true), reshape('پارامتر', true)]];
-    const summaryBody = [
-        [latestAnalysis.dValues.d10?.toFixed(2) ?? 'N/A', reshape('D10 (µm)')],
-        [latestAnalysis.dValues.d30?.toFixed(2) ?? 'N/A', reshape('D30 (µm)')],
-        [latestAnalysis.dValues.d50?.toFixed(2) ?? 'N/A', reshape('D50 (µm)')],
-        [latestAnalysis.dValues.d60?.toFixed(2) ?? 'N/A', reshape('D60 (µm)')],
-        [latestAnalysis.dValues.d80?.toFixed(2) ?? 'N/A', reshape('D80 (µm)')],
-        [latestAnalysis.Cu?.toFixed(2) ?? 'N/A', reshape('Cu (ضریب یکنواختی)')],
-        [latestAnalysis.Cc?.toFixed(2) ?? 'N/A', reshape('Cc (ضریب انحنا)')],
-    ];
-
-    doc.autoTable({
-        startY: 215,
-        head: summaryHead,
-        body: summaryBody,
-        theme: 'grid',
-        styles: { font: 'Vazirmatn', halign: 'right' },
-        headStyles: { font: 'Vazirmatn', halign: 'right', fillColor: [103, 58, 183] },
-    });
-
-    // 6. Add Raw Data Table on a new page
-    doc.addPage();
-    doc.text(reshape('داده‌های خام تحلیل', true), 105, 20, { align: 'center' });
-
-    const rawDataHead = [[
-        reshape('درصد عبوری', true),
-        reshape('درصد تجمعی نگه‌داری', true),
-        reshape('درصد نگه‌داری', true),
-        reshape('وزن (گرم)', true),
-        reshape('اندازه (میکرون)', true),
-        reshape('سرند', true)
-    ]];
-    const rawDataBody = latestAnalysis.sieves.map((s, i) => [
-        `${latestAnalysis.percentPassing[i].toFixed(2)}%`,
-        `${latestAnalysis.cumRetained[i].toFixed(2)}%`,
-        `${latestAnalysis.percents[i].toFixed(2)}%`,
-        latestAnalysis.weights[i].toFixed(2),
-        s.size ?? reshape('سینی', true),
-        reshape(s.label, true)
-    ]);
-
-    doc.autoTable({
-        startY: 30,
-        head: rawDataHead,
-        body: rawDataBody,
-        theme: 'striped',
-        styles: { font: 'Vazirmatn', halign: 'right' },
-        headStyles: { font: 'Vazirmatn', halign: 'right', fillColor: [103, 58, 183] },
-    });
-
-    // 7. Save PDF
-    doc.save('آنالیز-سرندی.pdf');
-}
-
-async function exportToPDF_EN() {
-    if (!latestAnalysis) {
-        alert('Please run the analysis first.');
-        return;
-    }
-
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-
-    // 1. Add Content (No custom font needed)
-    doc.setFontSize(22);
+    // --- Content ---
+    doc.setR2L(true);
+    doc.setFontSize(18);
     doc.text('Sieve Analysis Report', 105, 20, { align: 'center' });
 
     doc.setFontSize(10);
-    doc.text(`Report Date: ${moment().format('YYYY-MM-DD')}`, 105, 28, { align: 'center' });
-    doc.text(`(Jalali: ${moment().locale('fa').format('YYYY/MM/DD')})`, 105, 34, { align: 'center' });
+    doc.text(`Report Date: ${new Date().toLocaleDateString()}`, 105, 28, { align: 'center' });
 
-    doc.setFontSize(12);
-    doc.text(`Total Sample Weight: ${latestAnalysis.totalWeight.toFixed(2)} g`, 105, 42, { align: 'center' });
+    // Charts
+    doc.addImage(chartInstances['passing-chart'].toBase64Image(), 'PNG', 15, 40, 180, 80);
+    doc.addImage(chartInstances['retained-chart'].toBase64Image(), 'PNG', 15, 125, 180, 80);
+    doc.addImage(chartInstances['weight-chart'].toBase64Image(), 'PNG', 15, 210, 180, 80);
 
-    // 2. Add Charts as Images
-    const passingChartImg = passingChartInstance.canvas.toDataURL('image/jpeg', 0.8);
-    const weightChartImg = weightChartInstance.canvas.toDataURL('image/jpeg', 0.8);
+    doc.addPage();
 
-    doc.addImage(passingChartImg, 'JPEG', 15, 50, 180, 80);
-    doc.addImage(weightChartImg, 'JPEG', 15, 135, 180, 80);
+    // Analysis Text
+    doc.setFontSize(14);
+    doc.text('Analysis Interpretation', 105, 20, { align: 'center' });
+    const cleanText = (html) => html.replace(/<br>/g, '\n').replace(/<[^>]*>/g, '').trim();
+    doc.setFontSize(10);
+    doc.text(cleanText(analysisText.general), 20, 30);
+    if(analysisText.specific) {
+        doc.text(cleanText(analysisText.specific), 20, 60);
+    }
 
-    // 3. Add Summary Table
-    const summaryHead = [['Parameter', 'Value']];
-    const summaryBody = [
-        ['D10 (µm)', latestAnalysis.dValues.d10?.toFixed(2) ?? 'N/A'],
-        ['D30 (µm)', latestAnalysis.dValues.d30?.toFixed(2) ?? 'N/A'],
-        ['D50 (µm)', latestAnalysis.dValues.d50?.toFixed(2) ?? 'N/A'],
-        ['D60 (µm)', latestAnalysis.dValues.d60?.toFixed(2) ?? 'N/A'],
-        ['D80 (µm)', latestAnalysis.dValues.d80?.toFixed(2) ?? 'N/A'],
-        ['Cu (Uniformity Coefficient)', latestAnalysis.Cu?.toFixed(2) ?? 'N/A'],
-        ['Cc (Curvature Coefficient)', latestAnalysis.Cc?.toFixed(2) ?? 'N/A'],
-    ];
-
+    // Summary Table
     doc.autoTable({
-        startY: 220,
-        head: summaryHead,
-        body: summaryBody,
-        theme: 'grid',
-        headStyles: { fillColor: [103, 58, 183] }, // Purple header
+        startY: 90,
+        head: [['Parameter', 'Value']],
+        body: Object.entries(summary.dValues).map(([key, value]) => [key.toUpperCase(), value?.toFixed(2) ?? 'N/A'])
+            .concat([
+                ['Cu', Cu?.toFixed(2) ?? 'N/A'],
+                ['Cc', Cc?.toFixed(2) ?? 'N/A'],
+                ['FM', fm?.toFixed(2) ?? 'N/A'],
+                ['Total Weight (g)', totalWeight?.toFixed(2) ?? 'N/A']
+            ]),
+        styles: { font: 'BNazanin', halign: 'center' },
+        headStyles: { fillColor: [41, 128, 185] },
     });
 
-    // 4. Add Raw Data Table on a new page
+    // Raw Data Table
     doc.addPage();
-    doc.text('Raw Analysis Data', 105, 20, { align: 'center' });
-
-    const enLabelMap = {
-        'سرند 15': 'Sieve 15', '10 سانت': '10 cm', '7.5 سانت': '7.5 cm', '2 اینچ': '2 inch', '1اینچ': '1 inch', '3/4 اینچ': '3/4 inch', '1/2 اینچ': '1/2 inch', '4 مش': '4 mesh', '8 مش': '8 mesh', '16 مش': '16 mesh', '30 مش': '30 mesh', '100 مش': '100 mesh', 'سینی': 'Pan',
-        '6 اینچ': '6 inch', '4 اینچ': '4 inch', '3/8 اینچ': '3/8 inch', '10 مش': '10 mesh', '40 مش': '40 mesh', '200 مش': '200 mesh',
-        '20 مش': '20 mesh', '60 مش': '60 mesh', '80 مش': '80 mesh', '120 مش': '120 mesh', '140 مش': '140 mesh', '170 مش': '170 mesh', '270 مش': '270 mesh', '400 مش': '400 mesh', '500 مش': '500 mesh'
-    };
-    const getEnLabel = (faLabel) => enLabelMap[faLabel] || faLabel;
-
-    const rawDataHead = [['Sieve', 'Size (µm)', 'Weight (g)', 'Retained %', 'Cum. Retained %', 'Passing %']];
-    const rawDataBody = latestAnalysis.sieves.map((s, i) => [
-        getEnLabel(s.label),
-        s.size ?? 'Pan',
-        latestAnalysis.weights[i].toFixed(2),
-        `${latestAnalysis.percents[i].toFixed(2)}%`,
-        `${latestAnalysis.cumRetained[i].toFixed(2)}%`,
-        `${latestAnalysis.percentPassing[i].toFixed(2)}%`,
-    ]);
-
+    doc.text('Raw Data Table', 105, 20, { align: 'center' });
     doc.autoTable({
         startY: 30,
-        head: rawDataHead,
-        body: rawDataBody,
-        theme: 'striped',
-        headStyles: { fillColor: [103, 58, 183] },
+        head: [['Sieve', 'Size (µm)', 'Weight (g)', 'Retained %', 'Cum. Retained %', 'Passing %']],
+        body: table.map(row => [
+            row.label,
+            row.size,
+            row.weight.toFixed(2),
+            row.percent_retained.toFixed(2),
+            row.cumulative_retained.toFixed(2),
+            row.percent_passing.toFixed(2)
+        ]),
+        styles: { font: 'BNazanin', halign: 'center' },
     });
 
-    // 5. Save PDF
-    doc.save('Sieve-Analysis-Report.pdf');
+    doc.save(`Sieve-Analysis-Report-${new Date().toISOString().slice(0,10)}.pdf`);
+}
+
+function exportToPDF_EN() {
+    if (!latestAnalysis) {
+        alert("Please perform analysis before exporting.");
+        return;
+    }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const { summary, table } = latestAnalysis;
+    const { dValues, Cu, Cc, fm, totalWeight, analysisText } = summary;
+
+    doc.setFontSize(18);
+    doc.text('Sieve Analysis Report', 105, 20, { align: 'center' });
+    doc.setFontSize(10);
+    doc.text(`Report Date: ${new Date().toLocaleDateString()}`, 105, 28, { align: 'center' });
+
+    doc.addImage(chartInstances['passing-chart'].toBase64Image(), 'PNG', 15, 40, 180, 80);
+    doc.addImage(chartInstances['retained-chart'].toBase64Image(), 'PNG', 15, 125, 180, 80);
+    doc.addImage(chartInstances['weight-chart'].toBase64Image(), 'PNG', 15, 210, 180, 80);
+
+    doc.addPage();
+    doc.setFontSize(14);
+    doc.text('Analysis Interpretation', 105, 20, { align: 'center' });
+    const cleanText = (html) => html.replace(/<br>/g, '\n').replace(/<[^>]*>/g, '').trim();
+    doc.setFontSize(10);
+    doc.text(cleanText(analysisText.general), 20, 30, { lang: 'en' });
+     if(analysisText.specific) {
+        doc.text(cleanText(analysisText.specific), 20, 60, { lang: 'en' });
+    }
+
+    doc.autoTable({
+        startY: 90,
+        head: [['Parameter', 'Value']],
+        body: Object.entries(summary.dValues).map(([key, value]) => [key.toUpperCase(), value?.toFixed(2) ?? 'N/A'])
+            .concat([
+                ['Cu', Cu?.toFixed(2) ?? 'N/A'],
+                ['Cc', Cc?.toFixed(2) ?? 'N/A'],
+                ['FM', fm?.toFixed(2) ?? 'N/A'],
+                ['Total Weight (g)', totalWeight?.toFixed(2) ?? 'N/A']
+            ]),
+        headStyles: { fillColor: [41, 128, 185] },
+    });
+
+    doc.addPage();
+    doc.text('Raw Data Table', 105, 20, { align: 'center' });
+    doc.autoTable({
+        startY: 30,
+        head: [['Sieve', 'Size (µm)', 'Weight (g)', 'Retained %', 'Cum. Retained %', 'Passing %']],
+        body: table.map(row => [
+            row.label, row.size, row.weight.toFixed(2),
+            row.percent_retained.toFixed(2), row.cumulative_retained.toFixed(2), row.percent_passing.toFixed(2)
+        ]),
+    });
+
+    doc.save(`Sieve-Analysis-Report-EN-${new Date().toISOString().slice(0,10)}.pdf`);
 }
 
 
-// --- INITIALIZE ---
+// --- 6. EVENT LISTENERS ---
+
+function setupEventListeners() {
+    dom.calculateBtn.addEventListener('click', () => {
+        const weights = currentSieves.map(sieve => {
+            const input = document.getElementById(`sieve-${sieve.label}`);
+            return parseFloat(input.value) || 0;
+        });
+        const analysisInput = currentSieves.map((sieve, i) => ({ ...sieve, weight: weights[i] }));
+
+        if (performAnalysis(analysisInput)) {
+            updateUI();
+        }
+    });
+
+    dom.resetBtn.addEventListener('click', () => loadSieveSet('default'));
+    dom.loadConcreteBtn.addEventListener('click', () => loadSieveSet('concrete'));
+    dom.loadCrusherBtn.addEventListener('click', () => loadSieveSet('crusher'));
+    dom.loadClayBtn.addEventListener('click', () => loadSieveSet('clay'));
+
+    dom.fab.addEventListener('click', () => {
+        if (latestAnalysis) dom.fabOptions.classList.toggle('active');
+        else alert('Please perform analysis before exporting.');
+    });
+    dom.exportExcelBtn.addEventListener('click', exportToExcel);
+    dom.exportPdfFaBtn.addEventListener('click', () => exportToPDF('fa'));
+    dom.exportPdfEnBtn.addEventListener('click', () => exportToPDF('en'));
+
+    // Modal Listeners
+    dom.manageSievesBtn.addEventListener('click', () => {
+        renderModalSieveList();
+        dom.sieveModal.classList.add('active');
+        setTimeout(() => dom.sieveModalContent.classList.remove('scale-95', 'opacity-0'), 10);
+    });
+
+    dom.closeModalBtn.addEventListener('click', () => {
+        dom.sieveModalContent.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => dom.sieveModal.classList.remove('active'), 300);
+    });
+
+    dom.addSieveBtn.addEventListener('click', () => {
+        const label = dom.newSieveLabelInput.value.trim();
+        const size = dom.newSieveSizeInput.value.trim();
+        if (!label) { alert('Please enter a sieve name.'); return; }
+        if (currentSieves.find(s => s.label === label)) { alert('A sieve with this name already exists.'); return; }
+
+        const sizeValue = size === '' ? null : parseFloat(size);
+        currentSieves.push({ label, size: sizeValue });
+
+        dom.newSieveLabelInput.value = '';
+        dom.newSieveSizeInput.value = '';
+
+        renderModalSieveList();
+        renderSieveInputs();
+    });
+
+    dom.modalSieveList.addEventListener('click', (e) => {
+        if (e.target.classList.contains('delete-sieve-btn')) {
+            const labelToDelete = e.target.dataset.label;
+            currentSieves = currentSieves.filter(s => s.label !== labelToDelete);
+            renderModalSieveList();
+            renderSieveInputs();
+        }
+    });
+}
+
+function loadSieveSet(setName) {
+    currentSieveSet = setName;
+    currentSieves = [...PREDEFINED_SIEVES[setName]];
+    resetUI();
+    renderSieveInputs();
+}
+
+// --- 7. INITIALIZATION ---
+
 window.onload = () => {
     renderSieveInputs();
     setupEventListeners();
