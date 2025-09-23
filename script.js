@@ -1,5 +1,5 @@
 // --- CONFIG & GLOBAL STATE ---
-const API_BASE_URL = 'http://localhost:5000';
+const API_BASE_URL = '';
 const PREDEFINED_SIEVES = {
     "default": [
         { label: 'سرند 15', size: 150000 }, { label: '10 سانت', size: 100000 },
