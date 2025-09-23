@@ -215,24 +215,24 @@ function calculateFinenessModulusClientSide(data) {
 function displayAnalysisHelp() {
     const { Cu, Cc, std_dev_geotechnical, fineness_modulus } = latestAnalysis;
 
-    let lines = ["<strong>تحلیل دانه‌بندی (Gradation):</strong>"];
+    let generalLines = ["<strong>تحلیل دانه‌بندی (Gradation):</strong>"];
     if (Cu != null && Cc != null) {
         if (Cu >= 4 && Cc >= 1 && Cc <= 3) {
-            lines.push(`<li>مقادیر Cu (${Cu.toFixed(2)}) و Cc (${Cc.toFixed(2)}) نشان‌دهنده یک خاک <strong>خوب دانه‌بندی شده (Well-Graded)</strong> است.</li>`);
+            generalLines.push(`<li>مقادیر Cu (${Cu.toFixed(2)}) و Cc (${Cc.toFixed(2)}) نشان‌دهنده یک خاک <strong>خوب دانه‌بندی شده (Well-Graded)</strong> است.</li>`);
         } else {
-            lines.push(`<li>مقادیر Cu (${Cu.toFixed(2)}) و Cc (${Cc.toFixed(2)}) نشان‌دهنده یک خاک <strong>بد دانه‌بندی شده (Poorly-Graded)</strong> است.</li>`);
+            generalLines.push(`<li>مقادیر Cu (${Cu.toFixed(2)}) و Cc (${Cc.toFixed(2)}) نشان‌دهنده یک خاک <strong>بد دانه‌بندی شده (Poorly-Graded)</strong> است.</li>`);
         }
     } else {
-        lines.push("<li>مقادیر Cu و Cc برای تعیین دقیق نوع دانه‌بندی کافی نبود.</li>");
+        generalLines.push("<li>مقادیر Cu و Cc برای تعیین دقیق نوع دانه‌بندی کافی نبود.</li>");
     }
-    lines.push("<br><strong>تحلیل یکنواختی (Sorting):</strong>");
+    generalLines.push("<br><strong>تحلیل یکنواختی (Sorting):</strong>");
     if (std_dev_geotechnical != null) {
-        lines.push(`<li>انحراف معیار نمونه برابر با <strong>${std_dev_geotechnical.toFixed(2)} میکرون</strong> است.</li>`);
+        generalLines.push(`<li>انحراف معیار نمونه برابر با <strong>${std_dev_geotechnical.toFixed(2)} میکرون</strong> است.</li>`);
     } else {
-        lines.push("<li>انحراف معیار قابل محاسبه نبود.</li>");
+        generalLines.push("<li>انحراف معیار قابل محاسبه نبود.</li>");
     }
 
-    generalAnalysisContainer.innerHTML = lines.join("\n");
+    generalAnalysisContainer.innerHTML = generalLines.join("\n");
 
     let specificText = '';
     if (currentSieveSet === 'concrete' && fineness_modulus != null) {
@@ -242,6 +242,10 @@ function displayAnalysisHelp() {
         } else {
             specificText += 'این مقدار خارج از بازه استاندارد است.';
         }
+    } else if (currentSieveSet === 'crusher') {
+        specificText = '<strong>تحلیل نمونه سنگ شکن:</strong> این نمونه معرف خوراک ورودی به سنگ‌شکن‌ها یا محصول خروجی آن‌هاست. توزیع گسترده ذرات (Cu بالا) معمولاً مطلوب است تا فضای خالی بین ذرات بزرگ توسط ذرات کوچکتر پر شود و تراکم هیپ افزایش یابد.';
+    } else if (currentSieveSet === 'clay') {
+        specificText = '<strong>تحلیل نمونه رس:</strong> این نمونه دارای درصد بالایی از ذرات بسیار ریز است. مقادیر بالای ذرات ریز (مثلاً زیر 75 میکرون) می‌تواند نفوذپذیری هیپ را به شدت کاهش داده و باعث ایجاد مشکلاتی مانند کانالیزه شدن محلول و کاهش راندمان لیچینگ شود.';
     }
 
     if (specificText) {
