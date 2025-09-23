@@ -1,10 +1,8 @@
 Flask
 numpy
 pandas
-Flask-Cors
 openpyxl
 reportlab
 matplotlib
-requests
 python-bidi
 gunicorn
