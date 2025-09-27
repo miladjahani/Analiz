@@ -94,10 +94,21 @@
             </section>
              <section id="image-analysis-section" style="display: none;">
                 <h2 data-lang-key="image_analysis_title">آنالیز تصویری سنگ شکن</h2>
+
+                <div id="image-analysis-guide" style="background-color: var(--primary-bg-color); padding: 15px; border-radius: 5px; margin-bottom: 20px; border: 1px solid var(--border-color);">
+                    <h3 data-lang-key="guide_title" style="margin-top: 0; color: var(--secondary-accent-color);">راهنمای تهیه تصویر</h3>
+                    <ul>
+                        <li data-lang-key="guide_item1">تصویر را از فاصله حدودا ۱ متری و به صورت کاملا عمود بر سطح بگیرید.</li>
+                        <li data-lang-key="guide_item2">یک شیء مرجع با اندازه مشخص (مانند سکه یا درب بطری) در کنار مصالح قرار دهید.</li>
+                        <li data-lang-key="guide_item3">مصالح را روی یک سطح صاف با رنگ متضاد (مانند پارچه یا ژئوممبران تیره) پخش کنید.</li>
+                    </ul>
+                </div>
+
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: end;">
                     <div>
                         <label for="image-upload" data-lang-key="image_upload_label">۱. بارگذاری تصویر مصالح (همراه با شیء مرجع مدور)</label>
                         <input type="file" id="image-upload" accept="image/*" style="width: 100%; padding: 10px; border-radius: 5px; border: 1px solid var(--border-color); background-color: var(--input-bg-color); color: var(--text-color);">
+                        <button id="camera-btn" data-lang-key="camera_button" style="width: 100%; margin-top: 10px;">استفاده از دوربین</button>
                     </div>
                     <div>
                         <label for="reference-diameter" data-lang-key="reference_diameter_label">۲. قطر واقعی شیء مرجع (mm)</label>
@@ -178,6 +189,18 @@
             </div>
         </div>
     </div>
+
+    <div id="camera-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h3 data-lang-key="camera_modal_title">Capture Image</h3>
+            <video id="camera-view" autoplay playsinline style="width: 100%; border-radius: 5px;"></video>
+            <div class="modal-actions">
+                <button id="cancel-camera" data-lang-key="camera_modal_cancel">Cancel</button>
+                <button id="capture-btn" data-lang-key="camera_modal_capture">Capture</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
@@ -316,6 +339,11 @@
             const imageUpload = document.getElementById('image-upload');
             const imageCanvas = document.getElementById('image-canvas');
             const processImageBtn = document.getElementById('process-image-btn');
+            const cameraBtn = document.getElementById('camera-btn');
+            const cameraModal = document.getElementById('camera-modal');
+            const cameraView = document.getElementById('camera-view');
+            const cancelCameraBtn = document.getElementById('cancel-camera');
+            const captureBtn = document.getElementById('capture-btn');
             const referenceDiameterInput = document.getElementById('reference-diameter');
             const ctx = imageCanvas.getContext('2d');
             let loadedImage = null;
@@ -342,6 +370,53 @@
                 reader.readAsDataURL(file);
             });
 
+            let cvWorker = new Worker('cv-worker.js');
+
+            cvWorker.onmessage = function(e) {
+                processImageBtn.disabled = false;
+                processImageBtn.textContent = "Process Image & Calculate Gradation";
+
+                if (e.data.error) {
+                    alert(`Worker Error: ${e.data.error}`);
+                    return;
+                }
+
+                if (e.data.success) {
+                    const { particles, refCircle } = e.data;
+
+                    // Draw results on the canvas from the main thread
+                    let displayMat = cv.imread(imageCanvas);
+                    cv.circle(displayMat, new cv.Point(refCircle.x, refCircle.y), refCircle.radius, new cv.Scalar(255, 0, 0, 255), 3);
+                    // Re-finding contours just for drawing, as we can't pass them from the worker
+                    let gray = new cv.Mat();
+                    cv.cvtColor(displayMat, gray, cv.COLOR_RGBA2GRAY);
+                    let binary = new cv.Mat();
+                    cv.adaptiveThreshold(gray, binary, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 11, 2);
+                    let contours = new cv.MatVector();
+                    let hierarchy = new cv.Mat();
+                    cv.findContours(binary, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+                     for (let i = 0; i < contours.size(); ++i) {
+                        const contour = contours.get(i);
+                        const area = cv.contourArea(contour);
+                        if (area > 20) {
+                             let M = cv.moments(contour, false);
+                            if (M.m00 === 0) continue;
+                            let cX = M.m10 / M.m00;
+                            let cY = M.m01 / M.m00;
+                            const distToRef = Math.sqrt(Math.pow(cX - refCircle.x, 2) + Math.pow(cY - refCircle.y, 2));
+                            if (distToRef > refCircle.radius) {
+                                cv.drawContours(displayMat, contours, i, new cv.Scalar(0, 255, 0, 255), 2);
+                            }
+                        }
+                        contour.delete();
+                    }
+                    cv.imshow('image-canvas', displayMat);
+                    displayMat.delete(); gray.delete(); binary.delete(); contours.delete(); hierarchy.delete();
+
+                    populateSieveInputsFromParticles(particles);
+                }
+            };
+
             processImageBtn.addEventListener('click', () => {
                 if (!cvIsReady || !loadedImage) {
                     alert("OpenCV is not ready or no image is loaded.");
@@ -353,78 +428,50 @@
                     return;
                 }
 
+                processImageBtn.disabled = true;
+                processImageBtn.textContent = "Processing...";
+
+                // Get image data from canvas
+                const imageData = ctx.getImageData(0, 0, imageCanvas.width, imageCanvas.height);
+
+                // Post data to the worker
+                cvWorker.postMessage({ imageData: imageData, refDiameter: realDiameter });
+            });
+
+            let stream = null;
+
+            async function openCamera() {
                 try {
-                    processImageBtn.disabled = true;
-                    processImageBtn.textContent = "Processing...";
-
-                    let src = cv.imread(imageCanvas);
-                    let displayMat = src.clone();
-                    let gray = new cv.Mat();
-                    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
-                    cv.GaussianBlur(gray, gray, new cv.Size(7, 7), 1.5, 1.5);
-
-                    // --- 1. Reference Object Detection ---
-                    let circles = new cv.Mat();
-                    cv.HoughCircles(gray, circles, cv.HOUGH_GRADIENT, 1, gray.rows / 8, 100, 30, 10, 100);
-
-                    if (circles.cols === 0) {
-                        alert("No reference circle found. Please check the image.");
-                        src.delete(); gray.delete(); displayMat.delete(); circles.delete();
-                        processImageBtn.disabled = false;
-                        processImageBtn.textContent = "Process Image & Calculate Gradation";
-                        return;
-                    }
-
-                    const refCircle = { x: circles.data32F[0], y: circles.data32F[1], radius: circles.data32F[2] };
-                    pixelsPerMm = (refCircle.radius * 2) / realDiameter;
-
-                    let center = new cv.Point(refCircle.x, refCircle.y);
-                    cv.circle(displayMat, center, refCircle.radius, new cv.Scalar(255, 0, 0, 255), 3);
-
-                    // --- 2. Particle Detection ---
-                    let binary = new cv.Mat();
-                    cv.adaptiveThreshold(gray, binary, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 11, 2);
-
-                    let contours = new cv.MatVector();
-                    let hierarchy = new cv.Mat();
-                    cv.findContours(binary, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
-
-                    let particles = [];
-                    const minParticleArea = 20;
-
-                    for (let i = 0; i < contours.size(); ++i) {
-                        const contour = contours.get(i);
-                        const area = cv.contourArea(contour);
-
-                        if (area > minParticleArea) {
-                            let M = cv.moments(contour, false);
-                            let cX = M.m10 / M.m00;
-                            let cY = M.m01 / M.m00;
-
-                            const distToRef = Math.sqrt(Math.pow(cX - refCircle.x, 2) + Math.pow(cY - refCircle.y, 2));
-                            if (distToRef < refCircle.radius) continue;
-
-                            const pixelArea = cv.contourArea(contour);
-                            const areaInMm2 = pixelArea / (pixelsPerMm * pixelsPerMm);
-                            const equivalentDiameter = Math.sqrt(4 * areaInMm2 / Math.PI);
-
-                            particles.push({ diameter: equivalentDiameter, area: areaInMm2 });
-                            cv.drawContours(displayMat, contours, i, new cv.Scalar(0, 255, 0, 255), 2);
-                        }
-                        contour.delete();
-                    }
-
-                    populateSieveInputsFromParticles(particles);
-                    cv.imshow('image-canvas', displayMat);
-
-                    src.delete(); gray.delete(); displayMat.delete(); circles.delete(); binary.delete(); contours.delete(); hierarchy.delete();
+                    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                    cameraView.srcObject = stream;
+                    cameraModal.style.display = 'flex';
                 } catch (err) {
-                    console.error("Error in processImage:", err);
-                    alert("An error occurred during image processing.");
-                } finally {
-                    processImageBtn.disabled = false;
-                    processImageBtn.textContent = "Process Image & Calculate Gradation";
+                    console.error("Error accessing camera:", err);
+                    alert("Could not access camera. Please ensure permissions are granted and you are using a secure (HTTPS) connection.");
                 }
+            }
+
+            function stopCameraStream() {
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                }
+                cameraModal.style.display = 'none';
+            }
+
+            cameraBtn.addEventListener('click', openCamera);
+            cancelCameraBtn.addEventListener('click', stopCameraStream);
+
+            captureBtn.addEventListener('click', () => {
+                const videoWidth = cameraView.videoWidth;
+                const videoHeight = cameraView.videoHeight;
+                imageCanvas.width = videoWidth;
+                imageCanvas.height = videoHeight;
+                ctx.drawImage(cameraView, 0, 0, videoWidth, videoHeight);
+
+                loadedImage = new Image();
+                loadedImage.src = imageCanvas.toDataURL('image/jpeg');
+
+                stopCameraStream();
             });
 
             function populateSieveInputsFromParticles(particles) {
@@ -1026,9 +1073,17 @@
                     title: "Gradation Analysis of Materials", header_title: "Gradation Analysis", lang_button: "فارسی", export_pdf: "Export PDF", export_excel: "Export Excel",
                     material_selection_title: "1. Select Material", crushed_rock: "Crushed Rock", concrete_aggregates: "Concrete Aggregates", soil_clay: "Soil/Clay",
                     image_analysis_title: "Image-Based Analysis for Crusher",
-                    image_upload_label: "1. Upload Aggregate Image (with a circular reference object)",
+                    guide_title: "Image Capture Guide",
+                    guide_item1: "Take the photo from a distance of ~1 meter, perpendicular to the surface.",
+                    guide_item2: "Place a reference object with a known size (like a coin or bottle cap) next to the material.",
+                    guide_item3: "Spread the material on a flat surface with a contrasting color (like a dark cloth or geomembrane).",
+                    image_upload_label: "1. Upload Aggregate Image",
+                    camera_button: "Use Camera",
                     reference_diameter_label: "2. Real Diameter of Reference Object (mm)",
                     process_image_button: "3. Process Image & Calculate Gradation",
+                    camera_modal_title: "Capture Image",
+                    camera_modal_cancel: "Cancel",
+                    camera_modal_capture: "Capture",
                     sieve_inputs_title: "2. Enter Sieve Data", sieve_name: "Sieve Name", sieve_size: "Sieve Size (µm)", retained_weight: "Retained Weight (g)",
                     actions: "Actions", add_sieve: "Add Sieve", delete_button: "Delete", calculate_button: "Calculate", results_title: "3. Analysis Results", cu: "Coefficient of Uniformity (Cu):",
                     cc: "Coefficient of Curvature (Cc):", mean: "Weighted Mean (µm):", std_dev: "Standard Deviation:", analysis_title: "Text Analysis", charts_title: "4. Charts",
@@ -1076,9 +1131,17 @@
                     title: "آنالیز دانه‌بندی مصالح", header_title: "آنالیز دانه‌بندی", lang_button: "English", export_pdf: "خروجی PDF", export_excel: "خروجی Excel",
                     material_selection_title: "۱. انتخاب نوع مصالح", crushed_rock: "سنگ شکن", concrete_aggregates: "بتن", soil_clay: "رس",
                     image_analysis_title: "آنالیز تصویری سنگ شکن",
-                    image_upload_label: "۱. بارگذاری تصویر مصالح (همراه با شیء مرجع مدور)",
+                    guide_title: "راهنمای تهیه تصویر",
+                    guide_item1: "تصویر را از فاصله حدودا ۱ متری و به صورت کاملا عمود بر سطح بگیرید.",
+                    guide_item2: "یک شیء مرجع با اندازه مشخص (مانند سکه یا درب بطری) در کنار مصالح قرار دهید.",
+                    guide_item3: "مصالح را روی یک سطح صاف با رنگ متضاد (مانند پارچه یا ژئوممبران تیره) پخش کنید.",
+                    image_upload_label: "۱. بارگذاری تصویر مصالح",
+                    camera_button: "استفاده از دوربین",
                     reference_diameter_label: "۲. قطر واقعی شیء مرجع (mm)",
                     process_image_button: "۳. پردازش تصویر و محاسبه دانه‌بندی",
+                    camera_modal_title: "گرفتن عکس",
+                    camera_modal_cancel: "انصراف",
+                    camera_modal_capture: "عکس گرفتن",
                     sieve_inputs_title: "۲. ورود اطلاعات سرندها", sieve_name: "نام سرند", sieve_size: "اندازه سرند (µm)", retained_weight: "وزن باقی‌مانده (گرم)",
                     actions: "عملیات", add_sieve: "افزودن سرند", delete_button: "حذف", calculate_button: "محاسبه", results_title: "۳. نتایج آنالیز", cu: "ضریب یکنواختی (Cu):",
                     cc: "ضریب انحنا (Cc):", mean: "میانگین وزنی (μm):", std_dev: "انحراف معیار:", analysis_title: "تحلیل متنی", charts_title: "۴. نمودارها",
