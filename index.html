@@ -590,7 +590,8 @@
                 sieves.sort((a, b) => b.size - a.size);
 
                 particles.forEach(particle => {
-                    let retainedSieve = sieves.find(sieve => particle.diameter > sieve.size);
+                    const diameterInMicrometers = particle.diameter * 1000; // Convert mm to micrometers
+                    let retainedSieve = sieves.find(sieve => diameterInMicrometers > sieve.size);
                     if (retainedSieve) {
                         retainedSieve.retainedArea += particle.area;
                     }
