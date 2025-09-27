@@ -93,31 +93,46 @@
                 </select>
             </section>
              <section id="image-analysis-section" style="display: none;">
-                <h2 data-lang-key="image_analysis_title">آنالیز تصویری سنگ شکن</h2>
+                <h2 data-lang-key="image_analysis_title">Image-Based Analysis for Crusher</h2>
 
                 <div id="image-analysis-guide" style="background-color: var(--primary-bg-color); padding: 15px; border-radius: 5px; margin-bottom: 20px; border: 1px solid var(--border-color);">
-                    <h3 data-lang-key="guide_title" style="margin-top: 0; color: var(--secondary-accent-color);">راهنمای تهیه تصویر</h3>
+                    <h3 data-lang-key="guide_title" style="margin-top: 0; color: var(--secondary-accent-color);">Image Capture Guide</h3>
                     <ul>
-                        <li data-lang-key="guide_item1">تصویر را از فاصله حدودا ۱ متری و به صورت کاملا عمود بر سطح بگیرید.</li>
-                        <li data-lang-key="guide_item2">یک شیء مرجع با اندازه مشخص (مانند سکه یا درب بطری) در کنار مصالح قرار دهید.</li>
-                        <li data-lang-key="guide_item3">مصالح را روی یک سطح صاف با رنگ متضاد (مانند پارچه یا ژئوممبران تیره) پخش کنید.</li>
+                        <li data-lang-key="guide_item1">Take the photo from a distance of ~1 meter, perpendicular to the surface.</li>
+                        <li data-lang-key="guide_item2">Place a reference object with a known size (like a coin or bottle cap) next to the material.</li>
+                        <li data-lang-key="guide_item3">Spread the material on a flat surface with a contrasting color (like a dark cloth or geomembrane).</li>
+                        <li data-lang-key="guide_item4">For best accuracy, use "Manual" mode and draw a line across the reference object's diameter.</li>
                     </ul>
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: end;">
                     <div>
-                        <label for="image-upload" data-lang-key="image_upload_label">۱. بارگذاری تصویر مصالح (همراه با شیء مرجع مدور)</label>
+                        <label for="image-upload" data-lang-key="image_upload_label">1. Upload Aggregate Image</label>
                         <input type="file" id="image-upload" accept="image/*" style="width: 100%; padding: 10px; border-radius: 5px; border: 1px solid var(--border-color); background-color: var(--input-bg-color); color: var(--text-color);">
-                        <button id="camera-btn" data-lang-key="camera_button" style="width: 100%; margin-top: 10px;">استفاده از دوربین</button>
+                        <button id="camera-btn" data-lang-key="camera_button" style="width: 100%; margin-top: 10px;">Use Camera</button>
                     </div>
                     <div>
-                        <label for="reference-diameter" data-lang-key="reference_diameter_label">۲. قطر واقعی شیء مرجع (mm)</label>
-                        <input type="number" id="reference-diameter" placeholder="مثال: 24.26 (سکه ۵۰۰ تومانی)" value="24.26">
+                        <label for="reference-diameter" data-lang-key="reference_diameter_label">2. Real Diameter of Reference Object (mm)</label>
+                        <input type="number" id="reference-diameter" placeholder="e.g., 24.26 for a US Quarter" value="24.26">
                     </div>
                 </div>
-                <button id="process-image-btn" data-lang-key="process_image_button" disabled style="margin-top: 20px; width: 100%; background-color: var(--primary-accent-color);">۳. پردازش تصویر و محاسبه دانه‌بندی</button>
-                <div class="canvas-container" style="margin-top: 20px; border: 1px dashed var(--border-color); padding: 10px; min-height: 100px;">
-                    <canvas id="image-canvas" style="width: 100%; height: auto;"></canvas>
+
+                <div id="detection-mode-container" style="margin-top: 20px;">
+                    <label for="detection-mode" data-lang-key="detection_mode_label" style="display: block; margin-bottom: 5px;">Reference Detection Mode:</label>
+                    <select id="detection-mode" style="width: 100%; padding: 10px; border-radius: 5px; border: 1px solid var(--border-color); background-color: var(--input-bg-color); color: var(--text-color); font-size: 1em;">
+                        <option value="auto" data-lang-key="detection_mode_auto">Automatic (Circle Detection)</option>
+                        <option value="manual" data-lang-key="detection_mode_manual">Manual (Draw Line)</option>
+                    </select>
+                </div>
+
+                <div id="manual-selection-prompt" style="display: none; margin-top: 15px; padding: 10px; background-color: var(--primary-bg-color); border-radius: 5px; text-align: center; border: 1px dashed var(--secondary-accent-color);">
+                    <p data-lang-key="manual_prompt" style="margin: 0; color: var(--secondary-accent-color);">Click and drag on the image to draw a line across the diameter of the reference object.</p>
+                </div>
+
+                <button id="process-image-btn" data-lang-key="process_image_button" disabled style="margin-top: 20px; width: 100%; background-color: var(--primary-accent-color);">3. Process Image & Calculate Gradation</button>
+
+                <div class="canvas-container" style="margin-top: 20px; border: 1px solid var(--border-color); padding: 5px; min-height: 100px; background-color: #000;">
+                    <canvas id="image-canvas" style="width: 100%; height: auto; cursor: default;"></canvas>
                 </div>
             </section>
             <section id="sieve-inputs">
@@ -345,9 +360,13 @@
             const cancelCameraBtn = document.getElementById('cancel-camera');
             const captureBtn = document.getElementById('capture-btn');
             const referenceDiameterInput = document.getElementById('reference-diameter');
+            const detectionModeSelect = document.getElementById('detection-mode');
+            const manualSelectionPrompt = document.getElementById('manual-selection-prompt');
             const ctx = imageCanvas.getContext('2d');
             let loadedImage = null;
             let pixelsPerMm = 0;
+            let isDrawing = false;
+            let manualLine = { start: null, end: null };
 
             imageUpload.addEventListener('change', (e) => {
                 const file = e.target.files[0];
@@ -364,10 +383,46 @@
                         imageCanvas.style.width = `${loadedImage.width * scale}px`;
                         imageCanvas.style.height = `${loadedImage.height * scale}px`;
                         ctx.drawImage(loadedImage, 0, 0);
+                        manualLine = { start: null, end: null }; // Reset line on new image
                     };
                     loadedImage.src = event.target.result;
                 };
                 reader.readAsDataURL(file);
+            });
+
+            function getMousePos(canvas, evt) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                return {
+                    x: (evt.clientX - rect.left) * scaleX,
+                    y: (evt.clientY - rect.top) * scaleY
+                };
+            }
+
+            imageCanvas.addEventListener('mousedown', (e) => {
+                if (detectionModeSelect.value !== 'manual' || !loadedImage) return;
+                isDrawing = true;
+                manualLine.start = getMousePos(imageCanvas, e);
+                manualLine.end = null;
+            });
+
+            imageCanvas.addEventListener('mousemove', (e) => {
+                if (!isDrawing || !manualLine.start) return;
+                const currentPos = getMousePos(imageCanvas, e);
+                ctx.drawImage(loadedImage, 0, 0, imageCanvas.width, imageCanvas.height);
+                ctx.beginPath();
+                ctx.moveTo(manualLine.start.x, manualLine.start.y);
+                ctx.lineTo(currentPos.x, currentPos.y);
+                ctx.strokeStyle = '#f1c40f';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+            });
+
+            imageCanvas.addEventListener('mouseup', (e) => {
+                if (!isDrawing) return;
+                isDrawing = false;
+                manualLine.end = getMousePos(imageCanvas, e);
             });
 
             let cvWorker = new Worker('cv-worker.js');
@@ -382,40 +437,27 @@
                 }
 
                 if (e.data.success) {
-                    const { particles, refCircle } = e.data;
+                    const { particles, finalImageData } = e.data;
 
-                    // Draw results on the canvas from the main thread
-                    let displayMat = cv.imread(imageCanvas);
-                    cv.circle(displayMat, new cv.Point(refCircle.x, refCircle.y), refCircle.radius, new cv.Scalar(255, 0, 0, 255), 3);
-                    // Re-finding contours just for drawing, as we can't pass them from the worker
-                    let gray = new cv.Mat();
-                    cv.cvtColor(displayMat, gray, cv.COLOR_RGBA2GRAY);
-                    let binary = new cv.Mat();
-                    cv.adaptiveThreshold(gray, binary, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 11, 2);
-                    let contours = new cv.MatVector();
-                    let hierarchy = new cv.Mat();
-                    cv.findContours(binary, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
-                     for (let i = 0; i < contours.size(); ++i) {
-                        const contour = contours.get(i);
-                        const area = cv.contourArea(contour);
-                        if (area > 20) {
-                             let M = cv.moments(contour, false);
-                            if (M.m00 === 0) continue;
-                            let cX = M.m10 / M.m00;
-                            let cY = M.m01 / M.m00;
-                            const distToRef = Math.sqrt(Math.pow(cX - refCircle.x, 2) + Math.pow(cY - refCircle.y, 2));
-                            if (distToRef > refCircle.radius) {
-                                cv.drawContours(displayMat, contours, i, new cv.Scalar(0, 255, 0, 255), 2);
-                            }
-                        }
-                        contour.delete();
+                    // The worker now sends the final image, so we just draw it.
+                    if (finalImageData) {
+                        ctx.putImageData(finalImageData, 0, 0);
                     }
-                    cv.imshow('image-canvas', displayMat);
-                    displayMat.delete(); gray.delete(); binary.delete(); contours.delete(); hierarchy.delete();
 
                     populateSieveInputsFromParticles(particles);
                 }
             };
+
+            detectionModeSelect.addEventListener('change', () => {
+                const mode = detectionModeSelect.value;
+                if (mode === 'manual') {
+                    manualSelectionPrompt.style.display = 'block';
+                    imageCanvas.style.cursor = 'crosshair';
+                } else {
+                    manualSelectionPrompt.style.display = 'none';
+                    imageCanvas.style.cursor = 'default';
+                }
+            });
 
             processImageBtn.addEventListener('click', () => {
                 if (!cvIsReady || !loadedImage) {
@@ -428,14 +470,29 @@
                     return;
                 }
 
+                const mode = detectionModeSelect.value;
+                let workerData = {
+                    imageData: ctx.getImageData(0, 0, imageCanvas.width, imageCanvas.height),
+                    refDiameter: realDiameter,
+                    mode: mode
+                };
+
+                if (mode === 'manual') {
+                    if (!manualLine.start || !manualLine.end) {
+                        alert("Please draw a line on the reference object first.");
+                        return;
+                    }
+                    const dx = manualLine.end.x - manualLine.start.x;
+                    const dy = manualLine.end.y - manualLine.start.y;
+                    workerData.refPixelLength = Math.sqrt(dx * dx + dy * dy);
+                    workerData.manualLine = manualLine;
+                }
+
                 processImageBtn.disabled = true;
                 processImageBtn.textContent = "Processing...";
 
-                // Get image data from canvas
-                const imageData = ctx.getImageData(0, 0, imageCanvas.width, imageCanvas.height);
-
                 // Post data to the worker
-                cvWorker.postMessage({ imageData: imageData, refDiameter: realDiameter });
+                cvWorker.postMessage(workerData);
             });
 
             let stream = null;
@@ -1077,9 +1134,14 @@
                     guide_item1: "Take the photo from a distance of ~1 meter, perpendicular to the surface.",
                     guide_item2: "Place a reference object with a known size (like a coin or bottle cap) next to the material.",
                     guide_item3: "Spread the material on a flat surface with a contrasting color (like a dark cloth or geomembrane).",
+                    guide_item4: "For best accuracy, use 'Manual' mode and draw a line across the reference object's diameter.",
                     image_upload_label: "1. Upload Aggregate Image",
                     camera_button: "Use Camera",
                     reference_diameter_label: "2. Real Diameter of Reference Object (mm)",
+                    detection_mode_label: "Reference Detection Mode:",
+                    detection_mode_auto: "Automatic (Circle Detection)",
+                    detection_mode_manual: "Manual (Draw Line)",
+                    manual_prompt: "Click and drag on the image to draw a line across the diameter of the reference object.",
                     process_image_button: "3. Process Image & Calculate Gradation",
                     camera_modal_title: "Capture Image",
                     camera_modal_cancel: "Cancel",
@@ -1135,9 +1197,14 @@
                     guide_item1: "تصویر را از فاصله حدودا ۱ متری و به صورت کاملا عمود بر سطح بگیرید.",
                     guide_item2: "یک شیء مرجع با اندازه مشخص (مانند سکه یا درب بطری) در کنار مصالح قرار دهید.",
                     guide_item3: "مصالح را روی یک سطح صاف با رنگ متضاد (مانند پارچه یا ژئوممبران تیره) پخش کنید.",
+                    guide_item4: "برای بهترین دقت، از حالت «دستی» استفاده کرده و یک خط در امتداد قطر شیء مرجع رسم کنید.",
                     image_upload_label: "۱. بارگذاری تصویر مصالح",
                     camera_button: "استفاده از دوربین",
                     reference_diameter_label: "۲. قطر واقعی شیء مرجع (mm)",
+                    detection_mode_label: "حالت تشخیص شیء مرجع:",
+                    detection_mode_auto: "خودکار (تشخیص دایره)",
+                    detection_mode_manual: "دستی (رسم خط)",
+                    manual_prompt: "روی تصویر کلیک کرده و بکشید تا یک خط در امتداد قطر شیء مرجع رسم شود.",
                     process_image_button: "۳. پردازش تصویر و محاسبه دانه‌بندی",
                     camera_modal_title: "گرفتن عکس",
                     camera_modal_cancel: "انصراف",
