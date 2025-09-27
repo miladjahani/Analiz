@@ -35,8 +35,9 @@
         section { margin-bottom: 30px; background: var(--primary-bg-color); padding: 20px; border-radius: 8px; border: 1px solid var(--border-color); }
         h2 { color: var(--secondary-accent-color); border-bottom: 2px solid var(--border-color); padding-bottom: 10px; margin-top: 0; }
         select, input[type="number"] { width: 100%; padding: 10px; margin-top: 10px; margin-bottom: 10px; border-radius: 5px; border: 1px solid var(--border-color); background-color: var(--input-bg-color); color: var(--text-color); font-size: 1em; }
-        #sieve-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        #sieve-table th, #sieve-table td { border: 1px solid var(--border-color); padding: 12px; text-align: center; }
+        .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--border-color); border-radius: 8px; margin-top: 20px; }
+        #sieve-table { width: 100%; border-collapse: collapse; }
+        #sieve-table th, #sieve-table td { border: 1px solid var(--border-color); padding: 12px; text-align: center; white-space: nowrap; }
         #sieve-table th { background-color: var(--header-bg-color); color: var(--secondary-accent-color); font-size: 1.1em; }
         #results-output p { font-size: 1.2em; background: var(--secondary-bg-color); padding: 10px; border-radius: 5px; border-left: 5px solid var(--primary-accent-color); }
         #results-output span { font-weight: bold; color: var(--secondary-accent-color); padding: 0 10px; }
@@ -49,6 +50,27 @@
         .modal-content label { display: block; margin-top: 15px; margin-bottom: 5px; color: var(--text-color); }
         .modal-content input[type="text"], .modal-content textarea { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid var(--border-color); background-color: var(--input-bg-color); color: var(--text-color); font-size: 1em; box-sizing: border-box; }
         .modal-actions { margin-top: 25px; display: flex; justify-content: flex-end; gap: 10px; }
+
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .container { padding: 10px; }
+            header { flex-direction: column; align-items: flex-start; }
+            header h1 { font-size: 1.5em; margin-bottom: 15px; }
+            .toolbar { width: 100%; display: flex; justify-content: space-between; }
+            .toolbar button { padding: 8px 10px; font-size: 0.9em; }
+            #results-output {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            #charts {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            .chart-container { height: 300px; }
+            h2 { font-size: 1.2em; }
+        }
     </style>
 </head>
 <body>
@@ -63,30 +85,28 @@
         </header>
         <main>
             <section id="material-selection">
-                <h2 data-lang-key="material_selection_title">۱. انتخاب نوع مصالح و استاندارد</h2>
+                <h2 data-lang-key="material_selection_title">۱. انتخاب نوع مصالح</h2>
                 <select id="material-type">
                     <option value="crushed-rock" data-lang-key="crushed_rock">سنگ شکن</option>
                     <option value="concrete-aggregates" data-lang-key="concrete_aggregates">بتن</option>
                     <option value="soil-clay" data-lang-key="soil_clay">رس</option>
                 </select>
-                <select id="sieve-standard">
-                    <option value="astm" data-lang-key="astm">ASTM</option>
-                    <option value="iso" data-lang-key="iso">ISO</option>
-                    <option value="aashto" data-lang-key="aashto">AASHTO</option>
-                </select>
             </section>
             <section id="sieve-inputs">
                 <h2 data-lang-key="sieve_inputs_title">۲. ورود اطلاعات سرندها</h2>
-                <table id="sieve-table">
-                    <thead>
-                        <tr>
-                            <th data-lang-key="sieve_size">اندازه سرند (µm)</th>
-                            <th data-lang-key="retained_weight">وزن باقی‌مانده (گرم)</th>
-                            <th data-lang-key="actions">عملیات</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
+                <div class="table-container">
+                    <table id="sieve-table">
+                        <thead>
+                            <tr>
+                                <th data-lang-key="sieve_name">نام سرند</th>
+                                <th data-lang-key="sieve_size">اندازه سرند (µm)</th>
+                                <th data-lang-key="retained_weight">وزن باقی‌مانده (گرم)</th>
+                                <th data-lang-key="actions">عملیات</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
                 <button id="add-row" data-lang-key="add_sieve">افزودن سرند</button>
                 <button id="calculate" data-lang-key="calculate_button">محاسبه</button>
             </section>
@@ -102,8 +122,10 @@
                     <p><strong data-lang-key="cc">ضریب انحنا (Cc):</strong> <span id="cc-value">-</span></p>
                     <p><strong data-lang-key="mean">میانگین وزنی (μm):</strong> <span id="mean-value">-</span></p>
                     <p><strong data-lang-key="std_dev">انحراف معیار:</strong> <span id="std-dev-value">-</span></p>
-                    <p><strong data-lang-key="retained_75mm">درصد بزرگتر از ۷۵ میلی متر:</strong> <span id="retained-75mm-value">-</span></p>
-                    <p><strong data-lang-key="retained_45mm">درصد بزرگتر از ۴۵ میلی متر:</strong> <span id="retained-45mm-value">-</span></p>
+                    <div id="crusher-results" style="display: none;">
+                        <p><strong data-lang-key="retained_75mm">درصد بزرگتر از ۷۵ میلی متر:</strong> <span id="retained-75mm-value">-</span></p>
+                        <p><strong data-lang-key="retained_45mm">درصد بزرگتر از ۴۵ میلی متر:</strong> <span id="retained-45mm-value">-</span></p>
+                    </div>
                 </div>
                 <div id="text-analysis-container" style="margin-top: 20px;">
                     <h3 data-lang-key="analysis_title">تحلیل متنی</h3>
@@ -192,33 +214,60 @@
             Chart.defaults.plugins.legend.labels.boxWidth = 20;
             Chart.defaults.plugins.legend.labels.padding = 20;
 
-            const SIEVE_STANDARDS = {
-                astm: [75000, 50000, 37500, 25000, 19000, 12500, 9500, 4750, 2360, 1180, 600, 300, 150, 75],
-                iso: [80000, 63000, 50000, 40000, 31500, 25000, 20000, 16000, 12500, 10000, 8000, 6300, 5000, 4000, 2800, 2000, 1400, 1000, 500, 250, 125, 63],
-                aashto: [75000, 63000, 50000, 37500, 25000, 19000, 12500, 9500, 4750, 2000, 425, 180, 75]
+            const PREDEFINED_SIEVES = {
+                "crushed-rock": [
+                    { label: '6 inch', size: 152400 }, { label: '4 inch', size: 101600 },
+                    { label: '3 inch', size: 75000 }, { label: '2 inch', size: 50800 },
+                    { label: '1.5 inch', size: 37500 }, { label: '1 inch', size: 25400 },
+                    { label: '3/4 inch', size: 19000 }, { label: '1/2 inch', size: 12700 },
+                    { label: '3/8 inch', size: 9525 }, { label: 'No. 4', size: 4750 },
+                    { label: 'No. 10', size: 2000 }, { label: 'No. 40', size: 425 },
+                    { label: 'No. 200', size: 75 }
+                ],
+                "concrete-aggregates": [
+                    { label: '1.5 inch', size: 37500 }, { label: '1 inch', size: 25000 },
+                    { label: '3/4 inch', size: 19000 }, { label: '1/2 inch', size: 12500 },
+                    { label: '3/8 inch', size: 9500 }, { label: 'No. 4', size: 4750 },
+                    { label: 'No. 8', size: 2360 }, { label: 'No. 16', size: 1180 },
+                    { label: 'No. 30', size: 600 }, { label: 'No. 50', size: 300 },
+                    { label: 'No. 100', size: 150 }, { label: 'No. 200', size: 75 }
+                ],
+                "soil-clay": [
+                    { label: 'No. 10', size: 2000 }, { label: 'No. 20', size: 850 },
+                    { label: 'No. 40', size: 425 }, { label: 'No. 60', size: 250 },
+                    { label: 'No. 80', size: 180 }, { label: 'No. 100', size: 150 },
+                    { label: 'No. 140', size: 106 }, { label: 'No. 200', size: 75 }
+                ]
             };
 
             const addRowBtn = document.getElementById('add-row');
             const calculateBtn = document.getElementById('calculate');
             const sieveTableBody = document.querySelector('#sieve-table tbody');
-            const standardSelect = document.getElementById('sieve-standard');
+            const materialTypeSelect = document.getElementById('material-type');
 
-            function addSieveRow(size = '', weight = '') {
+            function addSieveRow(sieve = { label: '', size: '', weight: '' }) {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td><input type="number" class="sieve-size" placeholder="e.g., 4750" value="${size}"></td>
-                    <td><input type="number" class="retained-weight" placeholder="e.g., 500" value="${weight}"></td>
+                    <td><input type="text" class="sieve-label" value="${sieve.label}" placeholder="e.g., No. 4"></td>
+                    <td><input type="number" class="sieve-size" value="${sieve.size}" placeholder="e.g., 4750"></td>
+                    <td><input type="number" class="retained-weight" value="${sieve.weight}" placeholder="e.g., 500"></td>
                     <td><button class="delete-row" data-lang-key="delete_button">حذف</button></td>
                 `;
                 sieveTableBody.appendChild(row);
                 row.querySelector('.delete-row').addEventListener('click', () => row.remove());
             }
 
-            function loadStandardSieves() {
+            function loadSievesForMaterial() {
                 sieveTableBody.innerHTML = '';
-                SIEVE_STANDARDS[standardSelect.value].forEach(size => addSieveRow(size));
+                const selectedMaterial = materialTypeSelect.value;
+                const sieves = PREDEFINED_SIEVES[selectedMaterial];
+                if (sieves) {
+                    sieves.forEach(sieve => addSieveRow(sieve));
+                }
+                // Add Pan row
                 const panRow = document.createElement('tr');
                 panRow.innerHTML = `
+                    <td><input type="text" class="sieve-label" value="Pan" readonly></td>
                     <td><input type="text" class="sieve-size" value="Pan" readonly></td>
                     <td><input type="number" class="retained-weight" placeholder="Weight on Pan"></td>
                     <td></td>
@@ -227,10 +276,10 @@
             }
 
             addRowBtn.addEventListener('click', () => addSieveRow());
-            standardSelect.addEventListener('change', loadStandardSieves);
+            materialTypeSelect.addEventListener('change', loadSievesForMaterial);
             calculateBtn.addEventListener('click', performCalculations);
 
-            loadStandardSieves();
+            loadSievesForMaterial();
 
             function performCalculations() {
                 let sieves = [];
@@ -327,6 +376,12 @@
                 document.getElementById('retained-45mm-value').textContent = retained45mm.toFixed(2) + ' %';
 
                 const materialType = document.getElementById('material-type').value;
+                const crusherResultsEl = document.getElementById('crusher-results');
+                if (materialType === 'crushed-rock') {
+                    crusherResultsEl.style.display = 'block';
+                } else {
+                    crusherResultsEl.style.display = 'none';
+                }
                 const fmSieveSizes = [9500, 4750, 2360, 1180, 600, 300, 150]; // Standard sieves for FM
                 const cumulativeRetainedOnFMSieves = sieves
                     .filter(s => fmSieveSizes.includes(s.size))
@@ -732,11 +787,14 @@
                 passingChart = new Chart(document.getElementById('passing-curve-chart'), { type: 'line', data: { labels: labels, datasets: [{ label: translations[currentLang]['chart_legend_passing'], data: passingPercent, borderColor: '#3498db', backgroundColor: 'rgba(52, 152, 219, 0.2)', fill: true, tension: 0.1 }] }, options: passingOptions });
 
                 const retainedAnnotations = {};
-                if (retained75mm !== null) {
-                    retainedAnnotations.line75k = { type: 'label', xValue: 75000, yValue: retained75mm, content: `${retained75mm.toFixed(1)}% @ 75mm`, backgroundColor: 'rgba(231, 76, 60, 0.8)', font: { size: 12 }, padding: 6, borderRadius: 6, yAdjust: -15 };
-                }
-                if (retained45mm !== null) {
-                    retainedAnnotations.line45k = { type: 'label', xValue: 45000, yValue: retained45mm, content: `${retained45mm.toFixed(1)}% @ 45mm`, backgroundColor: 'rgba(231, 76, 60, 0.8)', font: { size: 12 }, padding: 6, borderRadius: 6, yAdjust: 15 };
+                const materialType = document.getElementById('material-type').value;
+                if (materialType === 'crushed-rock') {
+                    if (retained75mm !== null) {
+                        retainedAnnotations.line75k = { type: 'label', xValue: 75000, yValue: retained75mm, content: `${retained75mm.toFixed(1)}% @ 75mm`, backgroundColor: 'rgba(231, 76, 60, 0.8)', font: { size: 12 }, padding: 6, borderRadius: 6, yAdjust: -15 };
+                    }
+                    if (retained45mm !== null) {
+                        retainedAnnotations.line45k = { type: 'label', xValue: 45000, yValue: retained45mm, content: `${retained45mm.toFixed(1)}% @ 45mm`, backgroundColor: 'rgba(231, 76, 60, 0.8)', font: { size: 12 }, padding: 6, borderRadius: 6, yAdjust: 15 };
+                    }
                 }
 
                 const retainedOptions = { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: translations[currentLang]['chart_title_retained'], color: 'white', font: { size: 18 } }, legend: { position: 'top' }, annotation: { annotations: retainedAnnotations } }, scales: { x: { type: 'logarithmic', reverse: false, title: { display: true, text: translations[currentLang]['chart_xaxis_label'], color: 'white' }, ticks: { color: 'white' } }, y: { beginAtZero: true, max: 100, title: { display: true, text: translations[currentLang]['chart_yaxis_retained'], color: 'white' }, ticks: { color: 'white' } } } };
@@ -778,8 +836,8 @@
             const translations = {
                 en: {
                     title: "Gradation Analysis of Materials", header_title: "Gradation Analysis", lang_button: "فارسی", export_pdf: "Export PDF", export_excel: "Export Excel",
-                    material_selection_title: "1. Select Material & Standard", crushed_rock: "Crushed Rock", concrete_aggregates: "Concrete Aggregates", soil_clay: "Soil/Clay",
-                    astm: "ASTM", iso: "ISO", aashto: "AASHTO", sieve_inputs_title: "2. Enter Sieve Data", sieve_size: "Sieve Size (µm)", retained_weight: "Retained Weight (g)",
+                    material_selection_title: "1. Select Material", crushed_rock: "Crushed Rock", concrete_aggregates: "Concrete Aggregates", soil_clay: "Soil/Clay",
+                    sieve_inputs_title: "2. Enter Sieve Data", sieve_name: "Sieve Name", sieve_size: "Sieve Size (µm)", retained_weight: "Retained Weight (g)",
                     actions: "Actions", add_sieve: "Add Sieve", delete_button: "Delete", calculate_button: "Calculate", results_title: "3. Analysis Results", cu: "Coefficient of Uniformity (Cu):",
                     cc: "Coefficient of Curvature (Cc):", mean: "Weighted Mean (µm):", std_dev: "Standard Deviation:", analysis_title: "Text Analysis", charts_title: "4. Charts",
                     retained_75mm: "Percent Greater than 75mm:", retained_45mm: "Percent Greater than 45mm:",
@@ -824,8 +882,8 @@
                 },
                 fa: {
                     title: "آنالیز دانه‌بندی مصالح", header_title: "آنالیز دانه‌بندی", lang_button: "English", export_pdf: "خروجی PDF", export_excel: "خروجی Excel",
-                    material_selection_title: "۱. انتخاب نوع مصالح و استاندارد", crushed_rock: "سنگ شکن", concrete_aggregates: "بتن", soil_clay: "رس",
-                    astm: "ASTM", iso: "ISO", aashto: "AASHTO", sieve_inputs_title: "۲. ورود اطلاعات سرندها", sieve_size: "اندازه سرند (µm)", retained_weight: "وزن باقی‌مانده (گرم)",
+                    material_selection_title: "۱. انتخاب نوع مصالح", crushed_rock: "سنگ شکن", concrete_aggregates: "بتن", soil_clay: "رس",
+                    sieve_inputs_title: "۲. ورود اطلاعات سرندها", sieve_name: "نام سرند", sieve_size: "اندازه سرند (µm)", retained_weight: "وزن باقی‌مانده (گرم)",
                     actions: "عملیات", add_sieve: "افزودن سرند", delete_button: "حذف", calculate_button: "محاسبه", results_title: "۳. نتایج آنالیز", cu: "ضریب یکنواختی (Cu):",
                     cc: "ضریب انحنا (Cc):", mean: "میانگین وزنی (μm):", std_dev: "انحراف معیار:", analysis_title: "تحلیل متنی", charts_title: "۴. نمودارها",
                     retained_75mm: "درصد بزرگتر از ۷۵ میلی متر:", retained_45mm: "درصد بزرگتر از ۴۵ میلی متر:",
