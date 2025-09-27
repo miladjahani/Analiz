@@ -50,45 +50,93 @@ self.onmessage = function(e) {
                 cv.line(displayMat, new cv.Point(manualLine.start.x, manualLine.start.y), new cv.Point(manualLine.end.x, manualLine.end.y), new cv.Scalar(241, 196, 15, 255), 3);
             }
 
-            let binary = new cv.Mat();
-            cv.adaptiveThreshold(gray, binary, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 11, 2);
-            let contours = new cv.MatVector();
-            let hierarchy = new cv.Mat();
-            cv.findContours(binary, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+            // --- Watershed Pre-processing ---
+            let thresh = new cv.Mat();
+            cv.threshold(gray, thresh, 0, 255, cv.THRESH_BINARY_INV + cv.THRESH_OTSU);
+
+            // Noise removal
+            let kernel = cv.Mat.ones(3, 3, cv.CV_8U);
+            let opening = new cv.Mat();
+            cv.morphologyEx(thresh, opening, cv.MORPH_OPEN, kernel, new cv.Point(-1, -1), 2);
+
+            // Sure background area
+            let sureBg = new cv.Mat();
+            cv.dilate(opening, sureBg, kernel, new cv.Point(-1, -1), 3);
+
+            // Finding sure foreground area
+            let distTransform = new cv.Mat();
+            cv.distanceTransform(opening, distTransform, cv.DIST_L2, 5);
+            let sureFg = new cv.Mat();
+            cv.threshold(distTransform, sureFg, 0.7 * cv.minMaxLoc(distTransform).maxVal, 255, 0);
+
+            // Finding unknown region
+            sureFg.convertTo(sureFg, cv.CV_8U);
+            let unknown = new cv.Mat();
+            cv.subtract(sureBg, sureFg, unknown);
+
+            // Marker labelling
+            let markers = new cv.Mat();
+            cv.connectedComponents(sureFg, markers);
+
+            // Add one to all labels so that sure background is not 0, but 1
+            for (let i = 0; i < markers.rows; i++) {
+                for (let j = 0; j < markers.cols; j++) {
+                    markers.intPtr(i, j)[0] = markers.intPtr(i, j)[0] + 1;
+                    if (unknown.ucharPtr(i, j)[0] === 255) {
+                        markers.intPtr(i, j)[0] = 0;
+                    }
+                }
+            }
+
+            cv.watershed(displayMat, markers);
 
             let particles = [];
-            const minParticleArea = 20;
+            let contours = new cv.MatVector();
+            let hierarchy = new cv.Mat();
+            // Find contours of the watershed output and calculate sizes
+            for (let i = 2; i < cv.minMaxLoc(markers).maxVal + 1; i++) {
+                let mask = new cv.Mat();
+                cv.inRange(markers, new cv.Scalar(i), new cv.Scalar(i), mask);
+                // Find contours in the mask
+                cv.findContours(mask, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+                if (contours.size() > 0) {
+                    const contour = contours.get(0);
+                    const area = cv.contourArea(contour);
 
-            for (let i = 0; i < contours.size(); ++i) {
-                const contour = contours.get(i);
-                const area = cv.contourArea(contour);
-                if (area > minParticleArea) {
-                    let M = cv.moments(contour, false);
-                    if (M.m00 === 0) { contour.delete(); continue; }
-                    let cX = M.m10 / M.m00;
-                    let cY = M.m01 / M.m00;
+                    if (area > 20) { // Min particle area
+                        let M = cv.moments(contour, false);
+                        if (M.m00 === 0) { contour.delete(); continue; }
+                        let cX = M.m10 / M.m00;
+                        let cY = M.m01 / M.m00;
 
-                    if (refCircle) {
-                        const distToRef = Math.sqrt(Math.pow(cX - refCircle.x, 2) + Math.pow(cY - refCircle.y, 2));
-                        if (distToRef < refCircle.radius) {
-                            contour.delete();
-                            continue;
+                        // Filter out the reference object
+                        if (refCircle) {
+                            const distToRef = Math.sqrt(Math.pow(cX - refCircle.x, 2) + Math.pow(cY - refCircle.y, 2));
+                            if (distToRef < refCircle.radius) {
+                                contour.delete();
+                                continue;
+                            }
                         }
+
+                        cv.drawContours(displayMat, contours, 0, new cv.Scalar(0, 255, 0, 255), 2);
+                        const pixelArea = cv.contourArea(contour);
+                        const areaInMm2 = pixelArea / (pixelsPerMm * pixelsPerMm);
+                        const equivalentDiameter = Math.sqrt(4 * areaInMm2 / Math.PI);
+                        particles.push({ diameter: equivalentDiameter, area: areaInMm2 });
                     }
-                    cv.drawContours(displayMat, contours, i, new cv.Scalar(0, 255, 0, 255), 2);
-                    const pixelArea = cv.contourArea(contour);
-                    const areaInMm2 = pixelArea / (pixelsPerMm * pixelsPerMm);
-                    const equivalentDiameter = Math.sqrt(4 * areaInMm2 / Math.PI);
-                    particles.push({ diameter: equivalentDiameter, area: areaInMm2 });
+                    contour.delete();
                 }
-                contour.delete();
+                mask.delete();
             }
 
             const finalImageData = new ImageData(new Uint8ClampedArray(displayMat.data), displayMat.cols, displayMat.rows);
 
             self.postMessage({ success: true, particles: particles, finalImageData: finalImageData });
 
-            src.delete(); gray.delete(); displayMat.delete(); binary.delete(); contours.delete(); hierarchy.delete();
+            // Cleanup all created Mats
+            src.delete(); gray.delete(); displayMat.delete(); thresh.delete(); kernel.delete(); opening.delete();
+            sureBg.delete(); distTransform.delete(); sureFg.delete(); unknown.delete(); markers.delete();
+            contours.delete(); hierarchy.delete();
 
         } catch (error) {
             self.postMessage({ error: error.message });
