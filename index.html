@@ -18,162 +18,31 @@
             --button-hover-bg-color: #d35400;
             --danger-color: #e74c3c;
         }
-
-        body {
-            font-family: 'Tahoma', sans-serif;
-            background-color: var(--primary-bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 20px;
-            line-height: 1.6;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background-color: var(--secondary-bg-color);
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-        }
-
-        header {
-            background-color: var(--header-bg-color);
-            padding: 20px;
-            border-radius: 8px 8px 0 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 3px solid var(--primary-accent-color);
-        }
-
-        header h1 {
-            margin: 0;
-            font-size: 2em;
-            color: var(--secondary-accent-color);
-        }
-
-        .toolbar button {
-            margin-left: 10px;
-        }
-
-        button {
-            background-color: var(--button-bg-color);
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 1em;
-            transition: background-color 0.3s;
-        }
-
-        button:hover {
-            background-color: var(--button-hover-bg-color);
-        }
-
-        #add-row {
-            background-color: #27ae60;
-        }
-        #add-row:hover {
-            background-color: #229954;
-        }
-
-        #calculate {
-            background-color: var(--secondary-accent-color);
-            color: #2c3e50;
-            font-weight: bold;
-        }
-        #calculate:hover {
-            background-color: #e0b60b;
-        }
-
-        button.delete-row {
-            background-color: var(--danger-color);
-        }
-
-        button.delete-row:hover {
-            background-color: #c0392b;
-        }
-
-        main {
-            padding-top: 20px;
-        }
-
-        section {
-            margin-bottom: 30px;
-            background: var(--primary-bg-color);
-            padding: 20px;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-        }
-
-        h2 {
-            color: var(--secondary-accent-color);
-            border-bottom: 2px solid var(--border-color);
-            padding-bottom: 10px;
-            margin-top: 0;
-        }
-
-        select, input[type="number"] {
-            width: 100%;
-            padding: 10px;
-            margin-top: 10px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-            border: 1px solid var(--border-color);
-            background-color: var(--input-bg-color);
-            color: var(--text-color);
-            font-size: 1em;
-        }
-
-        #sieve-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-
-        #sieve-table th, #sieve-table td {
-            border: 1px solid var(--border-color);
-            padding: 12px;
-            text-align: center;
-        }
-
-        #sieve-table th {
-            background-color: var(--header-bg-color);
-            color: var(--secondary-accent-color);
-            font-size: 1.1em;
-        }
-
-        #results-output p {
-            font-size: 1.2em;
-            background: var(--secondary-bg-color);
-            padding: 10px;
-            border-radius: 5px;
-            border-left: 5px solid var(--primary-accent-color);
-        }
-
-        #results-output span {
-            font-weight: bold;
-            color: var(--secondary-accent-color);
-            padding: 0 10px;
-        }
-
-        .chart-container {
-            margin-top: 20px;
-            padding: 15px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            background: var(--secondary-bg-color);
-        }
-
-        [dir="ltr"] body {
-            text-align: left;
-        }
-
-        [dir="rtl"] body {
-            text-align: right;
-        }
+        body { font-family: 'Tahoma', sans-serif; background-color: var(--primary-bg-color); color: var(--text-color); margin: 0; padding: 20px; line-height: 1.6; }
+        .container { max-width: 1200px; margin: 0 auto; background-color: var(--secondary-bg-color); padding: 20px; border-radius: 8px; box-shadow: 0 0 20px rgba(0, 0, 0, 0.5); }
+        header { background-color: var(--header-bg-color); padding: 20px; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--primary-accent-color); }
+        header h1 { margin: 0; font-size: 2em; color: var(--secondary-accent-color); }
+        .toolbar button { margin-left: 10px; }
+        button { background-color: var(--button-bg-color); color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-size: 1em; transition: background-color 0.3s; }
+        button:hover { background-color: var(--button-hover-bg-color); }
+        #add-row { background-color: #27ae60; }
+        #add-row:hover { background-color: #229954; }
+        #calculate { background-color: var(--secondary-accent-color); color: #2c3e50; font-weight: bold; }
+        #calculate:hover { background-color: #e0b60b; }
+        button.delete-row { background-color: var(--danger-color); }
+        button.delete-row:hover { background-color: #c0392b; }
+        main { padding-top: 20px; }
+        section { margin-bottom: 30px; background: var(--primary-bg-color); padding: 20px; border-radius: 8px; border: 1px solid var(--border-color); }
+        h2 { color: var(--secondary-accent-color); border-bottom: 2px solid var(--border-color); padding-bottom: 10px; margin-top: 0; }
+        select, input[type="number"] { width: 100%; padding: 10px; margin-top: 10px; margin-bottom: 10px; border-radius: 5px; border: 1px solid var(--border-color); background-color: var(--input-bg-color); color: var(--text-color); font-size: 1em; }
+        #sieve-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        #sieve-table th, #sieve-table td { border: 1px solid var(--border-color); padding: 12px; text-align: center; }
+        #sieve-table th { background-color: var(--header-bg-color); color: var(--secondary-accent-color); font-size: 1.1em; }
+        #results-output p { font-size: 1.2em; background: var(--secondary-bg-color); padding: 10px; border-radius: 5px; border-left: 5px solid var(--primary-accent-color); }
+        #results-output span { font-weight: bold; color: var(--secondary-accent-color); padding: 0 10px; }
+        .chart-container { margin-top: 20px; padding: 15px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--secondary-bg-color); }
+        [dir="ltr"] body { text-align: left; }
+        [dir="rtl"] body { text-align: right; }
     </style>
 </head>
 <body>
@@ -186,7 +55,6 @@
                 <button id="export-excel" data-lang-key="export_excel">خروجی Excel</button>
             </div>
         </header>
-
         <main>
             <section id="material-selection">
                 <h2 data-lang-key="material_selection_title">۱. انتخاب نوع مصالح و استاندارد</h2>
@@ -201,7 +69,6 @@
                     <option value="aashto" data-lang-key="aashto">AASHTO</option>
                 </select>
             </section>
-
             <section id="sieve-inputs">
                 <h2 data-lang-key="sieve_inputs_title">۲. ورود اطلاعات سرندها</h2>
                 <table id="sieve-table">
@@ -212,14 +79,11 @@
                             <th data-lang-key="actions">عملیات</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <!-- Rows will be added dynamically -->
-                    </tbody>
+                    <tbody></tbody>
                 </table>
                 <button id="add-row" data-lang-key="add_sieve">افزودن سرند</button>
                 <button id="calculate" data-lang-key="calculate_button">محاسبه</button>
             </section>
-
             <section id="results" style="display: none;">
                 <h2 data-lang-key="results_title">۳. نتایج آنالیز</h2>
                 <div id="results-output">
@@ -238,32 +102,28 @@
                     <p id="text-analysis-output">-</p>
                 </div>
             </section>
-
             <section id="charts" style="display: none;">
                 <h2 data-lang-key="charts_title">۴. نمودارها</h2>
-                <div class="chart-container" style="height: 400px; margin-bottom: 20px;">
-                    <canvas id="passing-curve-chart"></canvas>
-                </div>
-                <div class="chart-container" style="height: 400px; margin-bottom: 20px;">
-                    <canvas id="retained-curve-chart"></canvas>
-                </div>
-                <div class="chart-container" style="height: 400px;">
-                    <canvas id="histogram-chart"></canvas>
-                </div>
+                <div class="chart-container" style="height: 400px; margin-bottom: 20px;"><canvas id="passing-curve-chart"></canvas></div>
+                <div class="chart-container" style="height: 400px; margin-bottom: 20px;"><canvas id="retained-curve-chart"></canvas></div>
+                <div class="chart-container" style="height: 400px;"><canvas id="histogram-chart"></canvas></div>
             </section>
         </main>
     </div>
-
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/1.4.0/chartjs-plugin-annotation.min.js"></script>
-
+    <script>
+        // This is a placeholder for a Base64 encoded font. In a real scenario, this would be a very long string.
+        const VAZIRMATN_FONT_BASE64 = "PLACEHOLDER_FOR_VERY_LONG_BASE64_STRING";
+    </script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             let passingChart, retainedChart, histogramChart;
-            let lastCalculationData = null; // To store data for exports
+            let lastCalculationData = null;
 
             const exportPdfBtn = document.getElementById('export-pdf');
             const exportExcelBtn = document.getElementById('export-excel');
@@ -273,13 +133,11 @@
             exportExcelBtn.addEventListener('click', exportToExcel);
             langToggleBtn.addEventListener('click', toggleLanguage);
 
-            // Chart.js Global Configuration
             Chart.defaults.color = 'rgba(236, 240, 241, 0.8)';
             Chart.defaults.borderColor = 'rgba(74, 98, 122, 0.5)';
             Chart.defaults.plugins.legend.labels.boxWidth = 20;
             Chart.defaults.plugins.legend.labels.padding = 20;
 
-            // Predefined sieve sets based on standards (in microns)
             const SIEVE_STANDARDS = {
                 astm: [75000, 50000, 37500, 25000, 19000, 12500, 9500, 4750, 2360, 1180, 600, 300, 150, 75],
                 iso: [80000, 63000, 50000, 40000, 31500, 25000, 20000, 16000, 12500, 10000, 8000, 6300, 5000, 4000, 2800, 2000, 1400, 1000, 500, 250, 125, 63],
@@ -291,28 +149,20 @@
             const sieveTableBody = document.querySelector('#sieve-table tbody');
             const standardSelect = document.getElementById('sieve-standard');
 
-            // Function to add a new sieve row
             function addSieveRow(size = '', weight = '') {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td><input type="number" class="sieve-size" placeholder="e.g., 4.75" value="${size}"></td>
+                    <td><input type="number" class="sieve-size" placeholder="e.g., 4750" value="${size}"></td>
                     <td><input type="number" class="retained-weight" placeholder="e.g., 500" value="${weight}"></td>
                     <td><button class="delete-row" data-lang-key="delete_button">حذف</button></td>
                 `;
                 sieveTableBody.appendChild(row);
-                row.querySelector('.delete-row').addEventListener('click', () => {
-                    row.remove();
-                });
+                row.querySelector('.delete-row').addEventListener('click', () => row.remove());
             }
 
-            // Function to load standard sieves
             function loadStandardSieves() {
-                sieveTableBody.innerHTML = ''; // Clear existing rows
-                const standard = standardSelect.value;
-                SIEVE_STANDARDS[standard].forEach(size => {
-                    addSieveRow(size);
-                });
-                // Add a pan row at the end
+                sieveTableBody.innerHTML = '';
+                SIEVE_STANDARDS[standardSelect.value].forEach(size => addSieveRow(size));
                 const panRow = document.createElement('tr');
                 panRow.innerHTML = `
                     <td><input type="text" class="sieve-size" value="Pan" readonly></td>
@@ -322,60 +172,42 @@
                 sieveTableBody.appendChild(panRow);
             }
 
-            // Event listeners
             addRowBtn.addEventListener('click', () => addSieveRow());
             standardSelect.addEventListener('change', loadStandardSieves);
             calculateBtn.addEventListener('click', performCalculations);
 
-            // Initial load
             loadStandardSieves();
 
             function performCalculations() {
-                const rows = sieveTableBody.querySelectorAll('tr');
                 let sieves = [];
-                rows.forEach(row => {
+                sieveTableBody.querySelectorAll('tr').forEach(row => {
                     const sizeInput = row.querySelector('.sieve-size');
                     const weightInput = row.querySelector('.retained-weight');
-
-                    // Handle the Pan separately
                     const isPan = sizeInput.value.toLowerCase() === 'pan';
                     const size = isPan ? 0 : parseFloat(sizeInput.value);
                     const weight = parseFloat(weightInput.value) || 0;
-
-                    if (!isNaN(size) && weight >= 0) {
-                        sieves.push({ size, weight, isPan });
-                    }
+                    if (!isNaN(size) && weight >= 0) sieves.push({ size, weight, isPan });
                 });
 
-                // Sort sieves by size in descending order
                 sieves.sort((a, b) => b.size - a.size);
-
                 const totalWeight = sieves.reduce((sum, s) => sum + s.weight, 0);
                 if (totalWeight === 0) {
-                    alert('Total weight cannot be zero. Please enter retained weights.');
+                    alert(translations[currentLang]['alert_no_weight']);
                     return;
                 }
 
                 let cumulativeRetained = 0;
                 let passingData = [];
-
                 sieves.forEach(sieve => {
                     cumulativeRetained += sieve.weight;
                     sieve.cumulativeRetainedPercent = (cumulativeRetained / totalWeight) * 100;
                     sieve.passingPercent = 100 - sieve.cumulativeRetainedPercent;
-
-                    // For interpolation, we need size and passing percent
-                    if (!sieve.isPan) {
-                        passingData.push({ size: sieve.size, passing: sieve.passingPercent });
-                    }
+                    if (!sieve.isPan) passingData.push({ size: sieve.size, passing: sieve.passingPercent });
                 });
 
-                // Add a theoretical point for interpolation at 100% passing for a larger sieve size
-                 const firstSieveSize = passingData.length > 0 ? passingData[0].size : 0;
-                 passingData.unshift({ size: firstSieveSize * 2, passing: 100 }); // A point well above the max sieve size
+                const firstSieveSize = passingData.length > 0 ? passingData[0].size : 0;
+                passingData.unshift({ size: firstSieveSize * 2, passing: 100 });
 
-
-                // Calculate D-values using logarithmic interpolation
                 const d10 = getDiameterForPassing(10, passingData);
                 const d30 = getDiameterForPassing(30, passingData);
                 const d50 = getDiameterForPassing(50, passingData);
@@ -388,486 +220,333 @@
                 document.getElementById('d60-value').textContent = d60.toFixed(3);
                 document.getElementById('d80-value').textContent = d80.toFixed(3);
 
-                // Calculate Cu and Cc
-                if (d10 > 0) {
-                    const cu = d60 / d10;
-                    const cc = (d30 * d30) / (d10 * d60);
-                    document.getElementById('cu-value').textContent = cu.toFixed(2);
-                    document.getElementById('cc-value').textContent = cc.toFixed(2);
-                } else {
-                    document.getElementById('cu-value').textContent = 'N/A';
-                    document.getElementById('cc-value').textContent = 'N/A';
-                }
+                const cu = (d10 > 0) ? (d60 / d10) : 0;
+                const cc = (d10 > 0 && d60 > 0) ? ((d30 * d30) / (d10 * d60)) : 0;
+                document.getElementById('cu-value').textContent = cu ? cu.toFixed(2) : 'N/A';
+                document.getElementById('cc-value').textContent = cc ? cc.toFixed(2) : 'N/A';
 
-                // --- New Statistical Calculations ---
                 let weightedMeanSum = 0;
                 let particleData = [];
                 const nonPanSieves = sieves.filter(s => !s.isPan);
-
                 for (let i = 0; i < nonPanSieves.length; i++) {
-                    const upperSize = (i === 0) ? nonPanSieves[i].size * 2 : nonPanSieves[i-1].size;
-                    const lowerSize = nonPanSieves[i].size;
-                    const meanSize = Math.sqrt(upperSize * lowerSize);
-
-                    const weight = nonPanSieves[i].weight;
-                    if(weight > 0) {
-                        particleData.push({ meanSize, weight });
-                        weightedMeanSum += meanSize * weight;
+                    const upperSize = (i === 0) ? nonPanSieves[i].size * 2 : nonPanSieves[i - 1].size;
+                    const meanSize = Math.sqrt(upperSize * nonPanSieves[i].size);
+                    if (nonPanSieves[i].weight > 0) {
+                        particleData.push({ meanSize, weight: nonPanSieves[i].weight });
+                        weightedMeanSum += meanSize * nonPanSieves[i].weight;
                     }
                 }
-
                 const panWeight = sieves.find(s => s.isPan)?.weight || 0;
                 if (panWeight > 0 && nonPanSieves.length > 0) {
-                    const smallestSieveSize = nonPanSieves[nonPanSieves.length - 1].size;
-                    const meanSize = smallestSieveSize / 2; // Approximation for pan
+                    const meanSize = nonPanSieves[nonPanSieves.length - 1].size / 2;
                     particleData.push({ meanSize, weight: panWeight });
                     weightedMeanSum += meanSize * panWeight;
                 }
-
                 const weightedMean = totalWeight > 0 ? weightedMeanSum / totalWeight : 0;
-
                 let varianceSum = 0;
-                if (totalWeight > 0) {
-                    particleData.forEach(p => {
-                        varianceSum += Math.pow(p.meanSize - weightedMean, 2) * p.weight;
-                    });
-                }
-                const variance = totalWeight > 0 ? varianceSum / totalWeight : 0;
-                const standardDeviation = Math.sqrt(variance);
+                if (totalWeight > 0) particleData.forEach(p => varianceSum += Math.pow(p.meanSize - weightedMean, 2) * p.weight);
+                const standardDeviation = Math.sqrt(totalWeight > 0 ? varianceSum / totalWeight : 0);
 
                 document.getElementById('mean-value').textContent = weightedMean.toFixed(3);
                 document.getElementById('std-dev-value').textContent = standardDeviation.toFixed(2);
-                // --- End of New Statistical Calculations ---
 
-                const dValues = {
-                    d10: d10, d30: d30, d50: d50, d60: d60, d80: d80
-                };
-                const cuVal = (d10 > 0) ? (d60 / d10) : 0;
-                const ccVal = (d10 > 0 && d60 > 0) ? ((d30 * d30) / (d10 * d60)) : 0;
-                const coeffs = { cu: cuVal, cc: ccVal };
-                const analysisText = generateTextAnalysis(coeffs.cu, coeffs.cc, sieves, totalWeight);
-
+                const dValues = { d10, d30, d50, d60, d80 };
+                const coeffs = { cu, cc };
+                const analysisKeys = generateTextAnalysis(cu, cc, sieves);
+                const analysisText = analysisKeys.map(key => translations[currentLang][key] || key).join(' ');
                 document.getElementById('text-analysis-output').textContent = analysisText;
 
                 lastCalculationData = {
-                    sieves: sieves,
-                    dValues: dValues,
-                    coeffs: coeffs,
-                    analysisText: analysisText,
-                    stats: {
-                        mean: weightedMean,
-                        stdDev: standardDeviation
-                    }
+                    sieves, dValues, coeffs, analysisKeys, analysisText,
+                    stats: { mean: weightedMean, stdDev: standardDeviation },
+                    passingData
                 };
 
-                // Show results and charts
                 document.getElementById('results').style.display = 'block';
                 document.getElementById('charts').style.display = 'block';
-
-                updateCharts(sieves, lastCalculationData.stats.mean, lastCalculationData.stats.stdDev);
+                updateCharts();
             }
 
-            function generateTextAnalysis(cu, cc, sieves, totalWeight) {
+            function generateTextAnalysis(cu, cc, sieves) {
                 const passing75micron = sieves.find(s => s.size === 75)?.passingPercent;
-                // If passing at 75 is not available (e.g., no 75 micron sieve), we can't determine fines percent accurately.
-                if (passing75micron === undefined) {
-                     return "Cannot determine fines percentage (no 75µm sieve data). Classification not possible.";
-                }
-                const finesPercent = passing75micron;
-
-                let analysis = "";
-
-                if (cu === 0 || cc === 0) {
-                    return "Not enough data for soil classification. D10, D30, and D60 values are required.";
-                }
-
-                // Basic USCS classification for Sands (S) and Gravels (G)
+                if (passing75micron === undefined) return ['analysis_err_no_fines'];
+                if (cu === 0 || cc === 0) return ['analysis_err_no_coeffs'];
                 const passing4750micron = sieves.find(s => s.size === 4750)?.passingPercent;
-                if (passing4750micron === undefined) {
-                    return "Cannot determine sand/gravel split (no 4.75mm/4750µm sieve data). Classification not possible.";
-                }
+                if (passing4750micron === undefined) return ['analysis_err_no_split'];
 
-                const coarsePercent = 100 - finesPercent;
+                const finesPercent = passing75micron;
                 const gravelPercent = 100 - passing4750micron;
-                const sandPercent = coarsePercent - gravelPercent;
-
-                if (gravelPercent > sandPercent) { // Coarse fraction is mostly gravel
-                    analysis += "Material is primarily Gravel-based. ";
+                const keys = [];
+                if (gravelPercent > (100 - finesPercent - gravelPercent)) {
+                    keys.push('analysis_base_gravel');
                     if (finesPercent < 5) {
-                        analysis += "Fines < 5%. ";
-                        if (cu >= 4 && cc >= 1 && cc <= 3) {
-                            analysis += "Classification: GW (Well-graded gravel).";
-                        } else {
-                            analysis += "Classification: GP (Poorly-graded gravel).";
-                        }
+                        keys.push('analysis_fines_lt_5');
+                        if (cu >= 4 && cc >= 1 && cc <= 3) keys.push('analysis_gw'); else keys.push('analysis_gp');
                     } else if (finesPercent > 12) {
-                        analysis += "Fines > 12%. Further plasticity tests needed to classify as GM (silty gravel) or GC (clayey gravel).";
-                    } else { // 5% <= Fines <= 12%
-                        analysis += "Borderline case (5-12% fines). Requires dual symbol (e.g., GW-GM, GP-GC).";
+                        keys.push('analysis_fines_gt_12', 'analysis_plasticity_gm_gc');
+                    } else {
+                        keys.push('analysis_fines_borderline', 'analysis_dual_symbol_gravel');
                     }
-                } else { // Coarse fraction is mostly sand
-                    analysis += "Material is primarily Sand-based. ";
-                     if (finesPercent < 5) {
-                        analysis += "Fines < 5%. ";
-                        if (cu >= 6 && cc >= 1 && cc <= 3) {
-                            analysis += "Classification: SW (Well-graded sand).";
-                        } else {
-                            analysis += "Classification: SP (Poorly-graded sand).";
-                        }
+                } else {
+                    keys.push('analysis_base_sand');
+                    if (finesPercent < 5) {
+                        keys.push('analysis_fines_lt_5');
+                        if (cu >= 6 && cc >= 1 && cc <= 3) keys.push('analysis_sw'); else keys.push('analysis_sp');
                     } else if (finesPercent > 12) {
-                        analysis += "Fines > 12%. Further plasticity tests needed to classify as SM (silty sand) or SC (clayey sand).";
-                    } else { // 5% <= Fines <= 12%
-                        analysis += "Borderline case (5-12% fines). Requires dual symbol (e.g., SW-SM, SP-SC).";
+                        keys.push('analysis_fines_gt_12', 'analysis_plasticity_sm_sc');
+                    } else {
+                        keys.push('analysis_fines_borderline', 'analysis_dual_symbol_sand');
                     }
                 }
-
-                return analysis;
+                return keys;
             }
 
             function exportToExcel() {
-                if (!lastCalculationData) {
-                    alert('Please perform a calculation first.');
-                    return;
-                }
-
+                if (!lastCalculationData) { alert(translations[currentLang]['alert_no_calculation']); return; }
                 const { sieves, dValues, coeffs, stats, analysisText } = lastCalculationData;
-
+                const isFa = currentLang === 'fa';
+                const today = new Date().toLocaleDateString(isFa ? 'fa-IR' : 'en-US');
                 const resultsData = sieves.map(s => ({
-                    'Sieve Size (µm)': s.isPan ? 'Pan' : s.size,
-                    'Retained Weight (g)': s.weight,
-                    'Cumulative Retained (%)': s.cumulativeRetainedPercent.toFixed(2),
-                    'Passing (%)': s.passingPercent.toFixed(2)
+                    [isFa ? 'اندازه سرند (µm)' : 'Sieve Size (µm)']: s.isPan ? (isFa ? 'سینی' : 'Pan') : s.size,
+                    [isFa ? 'وزن باقی‌مانده (g)' : 'Retained Weight (g)']: s.weight,
+                    [isFa ? 'باقی‌مانده تجمعی (%)' : 'Cumulative Retained (%)']: s.cumulativeRetainedPercent.toFixed(2),
+                    [isFa ? 'عبوری تجمعی (%)' : 'Cumulative Passing (%)']: s.passingPercent.toFixed(2)
                 }));
-
                 const ws = XLSX.utils.json_to_sheet(resultsData);
-
-                XLSX.utils.sheet_add_aoa(ws, [[]], {origin: -1});
-                XLSX.utils.sheet_add_aoa(ws, [['Analysis Results']], {origin: -1});
-                XLSX.utils.sheet_add_aoa(ws, [['D10', dValues.d10.toFixed(3)]], {origin: -1});
-                XLSX.utils.sheet_add_aoa(ws, [['D30', dValues.d30.toFixed(3)]], {origin: -1});
-                XLSX.utils.sheet_add_aoa(ws, [['D50', dValues.d50.toFixed(3)]], {origin: -1});
-                XLSX.utils.sheet_add_aoa(ws, [['D60', dValues.d60.toFixed(3)]], {origin: -1});
-                XLSX.utils.sheet_add_aoa(ws, [['D80', dValues.d80.toFixed(3)]], {origin: -1});
-                XLSX.utils.sheet_add_aoa(ws, [['Cu', coeffs.cu ? coeffs.cu.toFixed(2) : 'N/A']], {origin: -1});
-                XLSX.utils.sheet_add_aoa(ws, [['Cc', coeffs.cc ? coeffs.cc.toFixed(2) : 'N/A']], {origin: -1});
-                XLSX.utils.sheet_add_aoa(ws, [['Weighted Mean (µm)', stats.mean.toFixed(3)]], {origin: -1});
-                XLSX.utils.sheet_add_aoa(ws, [['Standard Deviation', stats.stdDev.toFixed(2)]], {origin: -1});
-                XLSX.utils.sheet_add_aoa(ws, [[]], {origin: -1}); // Spacer
-                XLSX.utils.sheet_add_aoa(ws, [['Text Analysis']], {origin: -1});
-                XLSX.utils.sheet_add_aoa(ws, [[analysisText]], {origin: -1});
-
+                const resultsOrigin = 'G';
+                let currentRow = 1;
+                XLSX.utils.sheet_add_aoa(ws, [[isFa ? 'نتایج تحلیل' : 'Analysis Results']], { origin: `${resultsOrigin}${currentRow++}` });
+                XLSX.utils.sheet_add_aoa(ws, [[isFa ? 'تاریخ' : 'Date', today]], { origin: `${resultsOrigin}${currentRow++}` });
+                currentRow++;
+                [
+                    ['D10', dValues.d10.toFixed(3)], ['D30', dValues.d30.toFixed(3)],
+                    ['D50', dValues.d50.toFixed(3)], ['D60', dValues.d60.toFixed(3)],
+                    ['D80', dValues.d80.toFixed(3)], ['Cu', coeffs.cu ? coeffs.cu.toFixed(2) : 'N/A'],
+                    ['Cc', coeffs.cc ? coeffs.cc.toFixed(2) : 'N/A'],
+                    [isFa ? 'میانگین وزنی (µm)' : 'Weighted Mean (µm)', stats.mean.toFixed(3)],
+                    [isFa ? 'انحراف معیار' : 'Standard Deviation', stats.stdDev.toFixed(2)]
+                ].forEach(item => {
+                    XLSX.utils.sheet_add_aoa(ws, [item], { origin: `${resultsOrigin}${currentRow++}` });
+                });
+                currentRow++;
+                XLSX.utils.sheet_add_aoa(ws, [[isFa ? 'تحلیل متنی' : 'Text Analysis']], { origin: `${resultsOrigin}${currentRow++}` });
+                XLSX.utils.sheet_add_aoa(ws, [doc.splitTextToSize(analysisText, 50)], { origin: `${resultsOrigin}${currentRow}` });
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, 'Gradation Analysis');
-
                 XLSX.writeFile(wb, 'Gradation_Analysis_Report.xlsx');
             }
 
             async function exportToPDF() {
-                if (!lastCalculationData) {
-                    alert('Please perform a calculation first.');
-                    return;
-                }
-
+                if (!lastCalculationData) { alert(translations[currentLang]['alert_no_calculation']); return; }
                 const { jsPDF } = window.jspdf;
-                const doc = new jsPDF('p', 'mm', 'a4');
-
+                const doc = new jsPDF();
+                const { sieves, dValues, coeffs, stats, analysisText } = lastCalculationData;
                 const originalButtonText = exportPdfBtn.textContent;
-                exportPdfBtn.textContent = 'Generating...';
+                exportPdfBtn.textContent = translations[currentLang]['generating'];
                 exportPdfBtn.disabled = true;
 
                 try {
-                    let yPos = 20;
-                    const pageHeight = doc.internal.pageSize.getHeight();
-                    const margin = 15;
-
-                    doc.setFontSize(22);
-                    doc.text('Gradation Analysis Report', doc.internal.pageSize.getWidth() / 2, yPos, { align: 'center' });
-                    yPos += 15;
-
-                    doc.setFontSize(12);
-                    const materialType = document.getElementById('material-type').selectedOptions[0].text;
-                    const standard = document.getElementById('sieve-standard').selectedOptions[0].text;
-                    doc.text(`Material Type: ${materialType}`, margin, yPos);
-                    doc.text(`Sieve Standard: ${standard}`, margin, yPos + 5);
-                    yPos += 15;
-
-                    const resultsCanvas = await html2canvas(document.getElementById('results'));
-                    const resultsImgData = resultsCanvas.toDataURL('image/png');
-                    const resultsImgProps = doc.getImageProperties(resultsImgData);
-                    const resultsImgHeight = (resultsImgProps.height * (doc.internal.pageSize.getWidth() - 2 * margin)) / resultsImgProps.width;
-                    doc.addImage(resultsImgData, 'PNG', margin, yPos, doc.internal.pageSize.getWidth() - 2 * margin, resultsImgHeight);
-                    yPos += resultsImgHeight + 10;
-
-                    const charts = document.querySelectorAll('.chart-container');
-                    for (const chartEl of charts) {
-                        const chartCanvas = await html2canvas(chartEl);
-                        const chartImgData = chartCanvas.toDataURL('image/png');
-                        const chartImgProps = doc.getImageProperties(chartImgData);
-                        const chartImgHeight = (chartImgProps.height * (doc.internal.pageSize.getWidth() - 2 * margin)) / chartImgProps.width;
-
-                        if (yPos + chartImgHeight > pageHeight - margin) {
-                            doc.addPage();
-                            yPos = margin;
-                        }
-
-                        doc.addImage(chartImgData, 'PNG', margin, yPos, doc.internal.pageSize.getWidth() - 2 * margin, chartImgHeight);
-                        yPos += chartImgHeight + 10;
+                    const isFa = currentLang === 'fa';
+                    // This is a placeholder. In a real app, the Base64 string would be here.
+                    if (isFa && VAZIRMATN_FONT_BASE64 !== "PLACEHOLDER_FOR_VERY_LONG_BASE64_STRING") {
+                        doc.addFileToVFS('Vazirmatn-Regular.ttf', VAZIRMATN_FONT_BASE64);
+                        doc.addFont('Vazirmatn-Regular.ttf', 'Vazirmatn', 'normal');
+                        doc.setFont('Vazirmatn');
+                    } else {
+                        doc.setFont('helvetica');
                     }
 
+                    const title = translations[currentLang]['pdf_report_title'];
+                    doc.setFontSize(20);
+                    doc.text(title, doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
+
+                    const today = new Date().toLocaleDateString(isFa ? 'fa-IR' : 'en-US');
+                    const materialType = document.getElementById('material-type').selectedOptions[0].text;
+                    const standard = document.getElementById('sieve-standard').selectedOptions[0].text;
+                    doc.setFontSize(12);
+
+                    const headerText = [
+                        `${translations[currentLang]['pdf_material_type']}: ${materialType}`,
+                        `${translations[currentLang]['pdf_standard']}: ${standard}`,
+                        `${translations[currentLang]['pdf_date']}: ${today}`
+                    ];
+                    if(isFa) {
+                        doc.text(headerText.reverse().join("\n"), 195, 35, { align: 'right' });
+                    } else {
+                        doc.text(headerText.join("\n"), 15, 35);
+                    }
+
+                    const tableHeaders = [[
+                        translations[currentLang]['pdf_sieve_size'],
+                        translations[currentLang]['pdf_retained_wt'],
+                        translations[currentLang]['pdf_cum_retained'],
+                        translations[currentLang]['pdf_cum_passing']
+                    ]];
+                    const tableBody = sieves.map(s => [
+                        s.isPan ? translations[currentLang]['pan'] : s.size,
+                        s.weight,
+                        s.cumulativeRetainedPercent.toFixed(2),
+                        s.passingPercent.toFixed(2)
+                    ]);
+
+                    doc.autoTable({
+                        head: tableHeaders, body: tableBody, startY: 55,
+                        theme: 'grid', headStyles: { fillColor: [44, 62, 80], halign: 'center' },
+                        styles: { font: isFa ? 'Vazirmatn' : 'helvetica', halign: 'center' },
+                        didParseCell: function(data) {
+                            if(isFa) {
+                                // A basic RTL fix for jspdf-autotable
+                                for (let i = 0; i < data.table.body.length; i++) {
+                                    for (let j = 0; j < data.table.body[i].cells.length; j++) {
+                                        let cell = data.table.body[i].cells[j];
+                                        if (typeof cell.text[0] === 'string') {
+                                           cell.text[0] = cell.text[0].split(' ').reverse().join(' ');
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    let finalY = doc.lastAutoTable.finalY + 10;
+                    doc.setFontSize(14);
+                    doc.text(translations[currentLang]['results_title'], 15, finalY);
+                    finalY += 8;
+                    const resultsData = [
+                        ['D10', dValues.d10.toFixed(3)], ['D30', dValues.d30.toFixed(3)],
+                        ['D50', dValues.d50.toFixed(3)], ['D60', dValues.d60.toFixed(3)],
+                        ['D80', dValues.d80.toFixed(3)], ['Cu', coeffs.cu ? coeffs.cu.toFixed(2) : 'N/A'],
+                        ['Cc', coeffs.cc ? coeffs.cc.toFixed(2) : 'N/A'],
+                        [translations[currentLang]['mean'], stats.mean.toFixed(2)],
+                        [translations[currentLang]['std_dev'], stats.stdDev.toFixed(2)]
+                    ];
+                    doc.autoTable({ body: resultsData, startY: finalY, theme: 'plain', styles: { font: isFa ? 'Vazirmatn' : 'helvetica' }});
+
+                    finalY = doc.lastAutoTable.finalY + 10;
+                    doc.setFontSize(14);
+                    doc.text(translations[currentLang]['analysis_title'], 15, finalY);
+                    finalY += 8;
+                    doc.setFontSize(10);
+                    const analysisLines = doc.splitTextToSize(analysisText, doc.internal.pageSize.getWidth() - 30);
+                    doc.text(analysisLines, 15, finalY, { align: isFa ? 'right' : 'left' });
+
+                    doc.addPage();
+                    let yPos = 20;
+                    for (const chartEl of document.querySelectorAll('.chart-container')) {
+                         const chartCanvas = await html2canvas(chartEl);
+                         doc.addImage(chartCanvas.toDataURL('image/png', 1.0), 'PNG', 15, yPos, 180, 100);
+                         yPos += 110;
+                    }
                     doc.save('Gradation_Analysis_Report.pdf');
                 } catch (e) {
                     console.error("Error generating PDF:", e);
-                    alert("Failed to generate PDF. See console for details.");
+                    alert(translations[currentLang]['pdf_error']);
                 } finally {
                     exportPdfBtn.textContent = originalButtonText;
                     exportPdfBtn.disabled = false;
                 }
             }
 
-            function updateCharts(sieveData, mean, stdDev) {
-                const labels = sieveData.filter(s => !s.isPan).map(s => s.size).reverse();
-                const passingPercent = sieveData.filter(s => !s.isPan).map(s => s.passingPercent).reverse();
-                const cumulativeRetainedPercent = sieveData.filter(s => !s.isPan).map(s => s.cumulativeRetainedPercent).reverse();
-                const totalWeight = sieveData.reduce((sum, s) => sum + s.weight, 0);
-                const retainedPercent = sieveData.filter(s => !s.isPan).map(s => (s.weight / totalWeight) * 100).reverse();
+            function updateCharts() {
+                if (!lastCalculationData) return;
+                const { sieves, stats, dValues, passingData } = lastCalculationData;
+                const { mean, stdDev } = stats;
+                const { d80 } = dValues;
+                const labels = sieves.filter(s => !s.isPan).map(s => s.size).reverse();
+                const passingPercent = sieves.filter(s => !s.isPan).map(s => s.passingPercent).reverse();
+                const cumulativeRetainedPercent = sieves.filter(s => !s.isPan).map(s => s.cumulativeRetainedPercent).reverse();
+                const totalWeight = sieves.reduce((sum, s) => sum + s.weight, 0);
+                const retainedPercent = sieves.filter(s => !s.isPan).map(s => (s.weight / totalWeight) * 100).reverse();
+                const passing75k = getPassingForDiameter(75000, passingData);
+                const passing45k = getPassingForDiameter(45000, passingData);
 
-
-                const chartOptions = (title, xAxisType = 'logarithmic') => ({
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: title,
-                            color: 'white',
-                            font: { size: 18 }
-                        },
-                        legend: {
-                            position: 'top',
-                        },
-                    },
-                    scales: {
-                        x: {
-                            type: xAxisType,
-                            reverse: xAxisType === 'logarithmic',
-                            title: {
-                                display: true,
-                                text: 'Sieve Size (µm) - Log Scale',
-                                color: 'white'
-                            },
-                            ticks: {
-                                color: 'white',
-                            }
-                        },
-                        y: {
-                            beginAtZero: true,
-                            max: 100,
-                            title: {
-                                display: true,
-                                text: 'Percentage (%)',
-                                color: 'white'
-                            },
-                            ticks: {
-                                color: 'white',
-                            }
-                        }
-                    }
-                });
-
-                // Destroy existing charts before creating new ones
                 if (passingChart) passingChart.destroy();
                 if (retainedChart) retainedChart.destroy();
                 if (histogramChart) histogramChart.destroy();
 
-                // Passing Curve Chart
-                passingChart = new Chart(document.getElementById('passing-curve-chart'), {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Cumulative Passing',
-                            data: passingPercent,
-                            borderColor: '#3498db',
-                            backgroundColor: 'rgba(52, 152, 219, 0.2)',
-                            fill: true,
-                            tension: 0.1
-                        }]
-                    },
-                    options: chartOptions('Cumulative Passing Curve')
-                });
-
-                // Retained Curve Chart
-                retainedChart = new Chart(document.getElementById('retained-curve-chart'), {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Cumulative Retained',
-                            data: cumulativeRetainedPercent,
-                            borderColor: '#e74c3c',
-                            backgroundColor: 'rgba(231, 76, 60, 0.2)',
-                            fill: true,
-                            tension: 0.1
-                        }]
-                    },
-                    options: chartOptions('Cumulative Retained Curve')
-                });
-
-                // Histogram Chart
-                const histogramOptions = {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        title: { display: true, text: 'Histogram (Percent Retained)', color: 'white', font: { size: 18 } },
-                        legend: { display: false },
-                        annotation: {
-                            annotations: {
-                                meanLine: {
-                                    type: 'line',
-                                    scaleID: 'x',
-                                    value: mean,
-                                    borderColor: '#e74c3c',
-                                    borderWidth: 3,
-                                    label: {
-                                        content: `Mean: ${mean.toFixed(0)} µm`,
-                                        enabled: true,
-                                        position: 'top',
-                                        backgroundColor: 'rgba(231, 76, 60, 0.8)'
-                                    }
-                                },
-                                stdDevLabel: {
-                                    type: 'label',
-                                    xValue: mean,
-                                    yValue: Math.max(...retainedPercent) * 0.9,
-                                    backgroundColor: 'rgba(44, 62, 80, 0.7)',
-                                    content: `Std Dev: ${stdDev.toFixed(0)}`,
-                                    font: { size: 12 },
-                                    padding: 6,
-                                    borderRadius: 6
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            type: 'logarithmic',
-                            reverse: true,
-                            title: { display: true, text: 'Sieve Size (µm) - Log Scale', color: 'white' },
-                            ticks: { color: 'white' }
-                        },
-                        y: {
-                            beginAtZero: true,
-                            title: { display: true, text: 'Percent Retained (%)', color: 'white' },
-                            ticks: { color: 'white' }
-                        }
-                    }
+                const passingAnnotations = {
+                    d80Line: { type: 'point', xValue: d80, yValue: 80, backgroundColor: 'rgba(231, 76, 60, 0.8)', radius: 6, label: { content: `D80: ${d80.toFixed(1)} µm`, enabled: true, position: 'start', color: 'white', backgroundColor: 'rgba(231, 76, 60, 0.8)' } }
                 };
+                if (passing75k !== null) passingAnnotations.line75k = { type: 'label', xValue: 75000, yValue: passing75k, content: `${passing75k.toFixed(1)}% @ 75mm`, backgroundColor: 'rgba(44, 62, 80, 0.7)', font: { size: 10 }, padding: 4, borderRadius: 4, yAdjust: -15 };
+                if (passing45k !== null) passingAnnotations.line45k = { type: 'label', xValue: 45000, yValue: passing45k, content: `${passing45k.toFixed(1)}% @ 45mm`, backgroundColor: 'rgba(44, 62, 80, 0.7)', font: { size: 10 }, padding: 4, borderRadius: 4, yAdjust: 15 };
 
-                histogramChart = new Chart(document.getElementById('histogram-chart'), {
-                    type: 'bar',
-                    data: {
-                        datasets: [{
-                            label: 'Percent Retained',
-                            data: labels.map((label, i) => ({ x: label, y: retainedPercent[i] })),
-                            backgroundColor: '#f1c40f',
-                            borderColor: '#f39c12',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: histogramOptions
-                });
+                const passingOptions = { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: translations[currentLang]['chart_title_passing'], color: 'white', font: { size: 18 } }, legend: { position: 'top' }, annotation: { annotations: passingAnnotations } }, scales: { x: { type: 'logarithmic', reverse: true, title: { display: true, text: translations[currentLang]['chart_xaxis_label'], color: 'white' }, ticks: { color: 'white' } }, y: { beginAtZero: true, max: 100, title: { display: true, text: translations[currentLang]['chart_yaxis_passing'], color: 'white' }, ticks: { color: 'white' } } } };
+                passingChart = new Chart(document.getElementById('passing-curve-chart'), { type: 'line', data: { labels: labels, datasets: [{ label: translations[currentLang]['chart_legend_passing'], data: passingPercent, borderColor: '#3498db', backgroundColor: 'rgba(52, 152, 219, 0.2)', fill: true, tension: 0.1 }] }, options: passingOptions });
+
+                const retainedOptions = { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: translations[currentLang]['chart_title_retained'], color: 'white', font: { size: 18 } }, legend: { position: 'top' } }, scales: { x: { type: 'logarithmic', reverse: true, title: { display: true, text: translations[currentLang]['chart_xaxis_label'], color: 'white' }, ticks: { color: 'white' } }, y: { beginAtZero: true, max: 100, title: { display: true, text: translations[currentLang]['chart_yaxis_retained'], color: 'white' }, ticks: { color: 'white' } } } };
+                retainedChart = new Chart(document.getElementById('retained-curve-chart'), { type: 'line', data: { labels: labels, datasets: [{ label: translations[currentLang]['chart_legend_retained'], data: cumulativeRetainedPercent, borderColor: '#e74c3c', backgroundColor: 'rgba(231, 76, 60, 0.2)', fill: true, tension: 0.1 }] }, options: retainedOptions });
+
+                const histogramOptions = { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: translations[currentLang]['chart_title_histogram'], color: 'white', font: { size: 18 } }, legend: { display: false }, annotation: { annotations: { meanLine: { type: 'line', scaleID: 'x', value: mean, borderColor: '#e74c3c', borderWidth: 3, label: { content: `${translations[currentLang]['mean_label']}: ${mean.toFixed(0)} µm`, enabled: true, position: 'top', backgroundColor: 'rgba(231, 76, 60, 0.8)' } }, stdDevLabel: { type: 'label', xValue: mean, yValue: Math.max(...retainedPercent) * 0.9, backgroundColor: 'rgba(44, 62, 80, 0.7)', content: `${translations[currentLang]['std_dev_label']}: ${stdDev.toFixed(0)}`, font: { size: 12 }, padding: 6, borderRadius: 6 } } } }, scales: { x: { type: 'logarithmic', reverse: true, title: { display: true, text: translations[currentLang]['chart_xaxis_label'], color: 'white' }, ticks: { color: 'white' } }, y: { beginAtZero: true, title: { display: true, text: translations[currentLang]['chart_yaxis_retained_hist'], color: 'white' }, ticks: { color: 'white' } } } };
+                histogramChart = new Chart(document.getElementById('histogram-chart'), { type: 'bar', data: { datasets: [{ label: translations[currentLang]['chart_legend_retained_hist'], data: labels.map((label, i) => ({ x: label, y: retainedPercent[i] })), backgroundColor: '#f1c40f', borderColor: '#f39c12', borderWidth: 1 }] }, options: histogramOptions });
             }
 
             function getDiameterForPassing(targetPassing, data) {
-                // Data is sorted by size (desc) and passing (asc)
-                // Find two points that bracket the target passing percentage
                 let p1 = null, p2 = null;
                 for (let i = 0; i < data.length - 1; i++) {
-                    // data[i].passing is higher, data[i+1].passing is lower
                     if (data[i].passing >= targetPassing && data[i + 1].passing <= targetPassing) {
-                        p1 = data[i];     // Upper point
-                        p2 = data[i + 1]; // Lower point
-                        break;
+                        p1 = data[i]; p2 = data[i + 1]; break;
                     }
                 }
-
                 if (!p1 || !p2 || p1.passing === p2.passing) {
-                    // Handle edge cases or if target is outside range
-                    if(targetPassing === 100 && data.length > 0) return data[0].size;
+                    if (targetPassing === 100 && data.length > 0) return data[0].size;
                     const lastPoint = data[data.length - 1];
-                    if(targetPassing <= lastPoint.passing) return lastPoint.size;
-                    return 0; // Or some other indicator of failure
+                    if (targetPassing <= lastPoint.passing) return lastPoint.size;
+                    return 0;
                 }
-
-                // Logarithmic interpolation formula for diameter (D)
-                // D = D1 * exp( [ln(D2/D1) * (P - P1)] / (P2 - P1) )
-                // where P is passing % and D is sieve size
-                const logD1 = Math.log(p1.size);
-                const logD2 = Math.log(p2.size);
-                const p1Passing = p1.passing;
-                const p2Passing = p2.passing;
-
-                const logD = logD1 + (logD2 - logD1) * (targetPassing - p1Passing) / (p2Passing - p1Passing);
-
+                const logD = Math.log(p1.size) + (Math.log(p2.size) - Math.log(p1.size)) * (targetPassing - p1.passing) / (p2.passing - p1.passing);
                 return Math.exp(logD);
+            }
+
+            function getPassingForDiameter(targetDiameter, data) {
+                let p1 = null, p2 = null;
+                for (let i = 0; i < data.length - 1; i++) {
+                    if (data[i].size >= targetDiameter && data[i + 1].size <= targetDiameter) {
+                        p1 = data[i]; p2 = data[i + 1]; break;
+                    }
+                }
+                if (!p1 || !p2 || p1.size === p2.size) return null;
+                const passing = p1.passing + (p2.passing - p1.passing) * (Math.log(targetDiameter) - Math.log(p1.size)) / (Math.log(p2.size) - Math.log(p1.size));
+                return passing;
             }
 
             const translations = {
                 en: {
-                    title: "Gradation Analysis of Materials",
-                    header_title: "Gradation Analysis",
-                    lang_button: "فارسی",
-                    export_pdf: "Export PDF",
-                    export_excel: "Export Excel",
-                    material_selection_title: "1. Select Material & Standard",
-                    crushed_rock: "Crushed Rock",
-                    concrete_aggregates: "Concrete Aggregates",
-                    soil_clay: "Soil/Clay",
-                    astm: "ASTM",
-                    iso: "ISO",
-                    aashto: "AASHTO",
-                    sieve_inputs_title: "2. Enter Sieve Data",
-                    sieve_size: "Sieve Size (µm)",
-                    retained_weight: "Retained Weight (g)",
-                    actions: "Actions",
-                    add_sieve: "Add Sieve",
-                    delete_button: "Delete",
-                    calculate_button: "Calculate",
-                    results_title: "3. Analysis Results",
-                    cu: "Coefficient of Uniformity (Cu):",
-                    cc: "Coefficient of Curvature (Cc):",
-                    mean: "Weighted Mean (µm):",
-                    std_dev: "Standard Deviation:",
-                    analysis_title: "Text Analysis",
-                    charts_title: "4. Charts",
+                    title: "Gradation Analysis of Materials", header_title: "Gradation Analysis", lang_button: "فارسی", export_pdf: "Export PDF", export_excel: "Export Excel",
+                    material_selection_title: "1. Select Material & Standard", crushed_rock: "Crushed Rock", concrete_aggregates: "Concrete Aggregates", soil_clay: "Soil/Clay",
+                    astm: "ASTM", iso: "ISO", aashto: "AASHTO", sieve_inputs_title: "2. Enter Sieve Data", sieve_size: "Sieve Size (µm)", retained_weight: "Retained Weight (g)",
+                    actions: "Actions", add_sieve: "Add Sieve", delete_button: "Delete", calculate_button: "Calculate", results_title: "3. Analysis Results", cu: "Coefficient of Uniformity (Cu):",
+                    cc: "Coefficient of Curvature (Cc):", mean: "Weighted Mean (µm):", std_dev: "Standard Deviation:", analysis_title: "Text Analysis", charts_title: "4. Charts",
+                    alert_no_weight: "Total weight cannot be zero. Please enter retained weights.", alert_no_calculation: "Please perform a calculation first.", generating: "Generating...", pdf_error: "Failed to generate PDF. See console for details.",
+                    pdf_report_title: "Gradation Analysis Report", pdf_material_type: "Material Type", pdf_standard: "Standard", pdf_date: "Date", pdf_sieve_size: "Sieve Size (µm)",
+                    pdf_retained_wt: "Retained Wt. (g)", pdf_cum_retained: "Cum. Retained (%)", pdf_cum_passing: "Cum. Passing (%)", pan: "Pan",
+                    chart_title_passing: "Cumulative Passing Curve", chart_title_retained: "Cumulative Retained Curve", chart_title_histogram: "Histogram (Percent Retained)",
+                    chart_xaxis_label: "Sieve Size (µm) - Log Scale", chart_yaxis_passing: "Passing (%)", chart_yaxis_retained: "Retained (%)", chart_yaxis_retained_hist: "Percent Retained (%)",
+                    chart_legend_passing: "Cumulative Passing", chart_legend_retained: "Cumulative Retained", chart_legend_retained_hist: "Percent Retained", mean_label: "Mean", std_dev_label: "Std Dev",
+                    analysis_err_no_fines: "Cannot determine fines percentage (no 75µm sieve data). Classification not possible.", analysis_err_no_coeffs: "Not enough data for soil classification. D10, D30, and D60 values are required.",
+                    analysis_err_no_split: "Cannot determine sand/gravel split (no 4.75mm/4750µm sieve data). Classification not possible.", analysis_base_gravel: "Material is primarily Gravel-based.",
+                    analysis_base_sand: "Material is primarily Sand-based.", analysis_fines_lt_5: "Fines < 5%.", analysis_fines_gt_12: "Fines > 12%.", analysis_fines_borderline: "Borderline case (5-12% fines).",
+                    analysis_gw: "Classification: GW (Well-graded gravel).", analysis_gp: "Classification: GP (Poorly-graded gravel).", analysis_plasticity_gm_gc: "Further plasticity tests needed to classify as GM (silty gravel) or GC (clayey gravel).",
+                    analysis_dual_symbol_gravel: "Requires dual symbol (e.g., GW-GM, GP-GC).", analysis_sw: "Classification: SW (Well-graded sand).", analysis_sp: "Classification: SP (Poorly-graded sand).",
+                    analysis_plasticity_sm_sc: "Further plasticity tests needed to classify as SM (silty sand) or SC (clayey sand).", analysis_dual_symbol_sand: "Requires dual symbol (e.g., SW-SM, SP-SC).",
                 },
                 fa: {
-                    title: "آنالیز دانه‌بندی مصالح",
-                    header_title: "آنالیز دانه‌بندی",
-                    lang_button: "English",
-                    export_pdf: "خروجی PDF",
-                    export_excel: "خروجی Excel",
-                    material_selection_title: "۱. انتخاب نوع مصالح و استاندارد",
-                    crushed_rock: "سنگ شکن",
-                    concrete_aggregates: "بتن",
-                    soil_clay: "رس",
-                    astm: "ASTM",
-                    iso: "ISO",
-                    aashto: "AASHTO",
-                    sieve_inputs_title: "۲. ورود اطلاعات سرندها",
-                    sieve_size: "اندازه سرند (µm)",
-                    retained_weight: "وزن باقی‌مانده (گرم)",
-                    actions: "عملیات",
-                    add_sieve: "افزودن سرند",
-                    delete_button: "حذف",
-                    calculate_button: "محاسبه",
-                    results_title: "۳. نتایج آنالیز",
-                    cu: "ضریب یکنواختی (Cu):",
-                    cc: "ضریب انحنا (Cc):",
-                    mean: "میانگین وزنی (μm):",
-                    std_dev: "انحراف معیار:",
-                    analysis_title: "تحلیل متنی",
-                    charts_title: "۴. نمودارها",
+                    title: "آنالیز دانه‌بندی مصالح", header_title: "آنالیز دانه‌بندی", lang_button: "English", export_pdf: "خروجی PDF", export_excel: "خروجی Excel",
+                    material_selection_title: "۱. انتخاب نوع مصالح و استاندارد", crushed_rock: "سنگ شکن", concrete_aggregates: "بتن", soil_clay: "رس",
+                    astm: "ASTM", iso: "ISO", aashto: "AASHTO", sieve_inputs_title: "۲. ورود اطلاعات سرندها", sieve_size: "اندازه سرند (µm)", retained_weight: "وزن باقی‌مانده (گرم)",
+                    actions: "عملیات", add_sieve: "افزودن سرند", delete_button: "حذف", calculate_button: "محاسبه", results_title: "۳. نتایج آنالیز", cu: "ضریب یکنواختی (Cu):",
+                    cc: "ضریب انحنا (Cc):", mean: "میانگین وزنی (μm):", std_dev: "انحراف معیار:", analysis_title: "تحلیل متنی", charts_title: "۴. نمودارها",
+                    alert_no_weight: "وزن کل نمی‌تواند صفر باشد. لطفاً وزن‌های باقی‌مانده را وارد کنید.", alert_no_calculation: "لطفاً ابتدا یک محاسبه انجام دهید.", generating: "در حال تولید...", pdf_error: "خطا در تولید PDF. جزئیات را در کنسول ببینید.",
+                    pdf_report_title: "گزارش تحلیل دانه‌بندی", pdf_material_type: "نوع مصالح", pdf_standard: "استاندارد", pdf_date: "تاریخ", pdf_sieve_size: "اندازه سرند (µm)",
+                    pdf_retained_wt: "وزن باقی‌مانده (g)", pdf_cum_retained: "باقی‌مانده تجمعی (%)", pdf_cum_passing: "عبوری تجمعی (%)", pan: "سینی",
+                    chart_title_passing: "منحنی تجمعی عبوری", chart_title_retained: "منحنی تجمعی باقی‌مانده", chart_title_histogram: "هیستوگرام (درصد باقی‌مانده)",
+                    chart_xaxis_label: "اندازه سرند (µm) - مقیاس لگاریتمی", chart_yaxis_passing: "درصد عبوری (%)", chart_yaxis_retained: "درصد باقی‌مانده (%)", chart_yaxis_retained_hist: "درصد باقی‌مانده (%)",
+                    chart_legend_passing: "عبوری تجمعی", chart_legend_retained: "باقی‌مانده تجمعی", chart_legend_retained_hist: "درصد باقی‌مانده", mean_label: "میانگین", std_dev_label: "انحراف معیار",
+                    analysis_err_no_fines: "امکان تعیین درصد ریزدانه (بدون داده سرند ۷۵µm) وجود ندارد. طبقه‌بندی ممکن نیست.", analysis_err_no_coeffs: "داده‌های کافی برای طبقه‌بندی خاک وجود ندارد. مقادیر D10، D30 و D60 مورد نیاز است.",
+                    analysis_err_no_split: "امکان تفکیک شن و ماسه (بدون داده سرند ۴.۷۵mm/۴۷۵۰µm) وجود ندارد. طبقه‌بندی ممکن نیست.", analysis_base_gravel: "ماده عمدتاً بر پایه شن است.",
+                    analysis_base_sand: "ماده عمدتاً بر پایه ماسه است.", analysis_fines_lt_5: "ریزدانه کمتر از ۵٪.", analysis_fines_gt_12: "ریزدانه بیشتر از ۱۲٪.", analysis_fines_borderline: "حالت مرزی (ریزدانه بین ۵ تا ۱۲٪).",
+                    analysis_gw: "طبقه‌بندی: GW (شن خوب دانه‌بندی شده).", analysis_gp: "طبقه‌بندی: GP (شن بد دانه‌بندی شده).", analysis_plasticity_gm_gc: "برای طبقه‌بندی به عنوان GM (شن لای‌دار) یا GC (شن رس‌دار) به آزمایش‌های خمیری بیشتری نیاز است.",
+                    analysis_dual_symbol_gravel: "نیازمند نماد دوگانه است (مانند GW-GM، GP-GC).", analysis_sw: "طبقه‌بندی: SW (ماسه خوب دانه‌بندی شده).", analysis_sp: "طبقه‌بندی: SP (ماسه بد دانه‌بندی شده).",
+                    analysis_plasticity_sm_sc: "برای طبقه‌بندی به عنوان SM (ماسه لای‌دار) یا SC (ماسه رس‌دار) به آزمایش‌های خمیری بیشتری نیاز است.", analysis_dual_symbol_sand: "نیازمند نماد دوگانه است (مانند SW-SM، SP-SC).",
                 }
             };
 
@@ -877,23 +556,20 @@
                 currentLang = lang;
                 document.documentElement.lang = lang;
                 document.documentElement.dir = lang === 'fa' ? 'rtl' : 'ltr';
-
                 document.querySelectorAll('[data-lang-key]').forEach(el => {
                     const key = el.getAttribute('data-lang-key');
-                    if (translations[lang][key]) {
-                        // For buttons, a direct textContent assignment is fine.
-                        // For other elements, this is also generally safe.
-                        el.textContent = translations[lang][key];
-                    }
+                    if (translations[lang][key]) el.textContent = translations[lang][key];
                 });
+                if (lastCalculationData) {
+                    const newAnalysisText = lastCalculationData.analysisKeys.map(key => translations[lang][key] || key).join(' ');
+                    document.getElementById('text-analysis-output').textContent = newAnalysisText;
+                    updateCharts();
+                }
             }
 
             function toggleLanguage() {
-                const newLang = currentLang === 'fa' ? 'en' : 'fa';
-                setLanguage(newLang);
+                setLanguage(currentLang === 'fa' ? 'en' : 'fa');
             }
-
-            // Set initial language
             setLanguage(currentLang);
         });
     </script>
