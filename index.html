@@ -390,26 +390,38 @@
                 reader.readAsDataURL(file);
             });
 
-            function getMousePos(canvas, evt) {
+            function getEventPos(canvas, evt) {
                 const rect = canvas.getBoundingClientRect();
                 const scaleX = canvas.width / rect.width;
                 const scaleY = canvas.height / rect.height;
+
+                let clientX, clientY;
+                if (evt.changedTouches) {
+                    // Use changedTouches for touch start, move, and end events
+                    clientX = evt.changedTouches[0].clientX;
+                    clientY = evt.changedTouches[0].clientY;
+                } else {
+                    // Fallback to mouse events
+                    clientX = evt.clientX;
+                    clientY = evt.clientY;
+                }
+
                 return {
-                    x: (evt.clientX - rect.left) * scaleX,
-                    y: (evt.clientY - rect.top) * scaleY
+                    x: (clientX - rect.left) * scaleX,
+                    y: (clientY - rect.top) * scaleY
                 };
             }
 
             imageCanvas.addEventListener('mousedown', (e) => {
                 if (detectionModeSelect.value !== 'manual' || !loadedImage) return;
                 isDrawing = true;
-                manualLine.start = getMousePos(imageCanvas, e);
+                manualLine.start = getEventPos(imageCanvas, e);
                 manualLine.end = null;
             });
 
             imageCanvas.addEventListener('mousemove', (e) => {
                 if (!isDrawing || !manualLine.start) return;
-                const currentPos = getMousePos(imageCanvas, e);
+                const currentPos = getEventPos(imageCanvas, e);
                 ctx.drawImage(loadedImage, 0, 0, imageCanvas.width, imageCanvas.height);
                 ctx.beginPath();
                 ctx.moveTo(manualLine.start.x, manualLine.start.y);
@@ -422,7 +434,36 @@
             imageCanvas.addEventListener('mouseup', (e) => {
                 if (!isDrawing) return;
                 isDrawing = false;
-                manualLine.end = getMousePos(imageCanvas, e);
+                manualLine.end = getEventPos(imageCanvas, e);
+            });
+
+            // Touch event listeners
+            imageCanvas.addEventListener('touchstart', (e) => {
+                if (detectionModeSelect.value !== 'manual' || !loadedImage) return;
+                e.preventDefault();
+                isDrawing = true;
+                manualLine.start = getEventPos(imageCanvas, e);
+                manualLine.end = null;
+            });
+
+            imageCanvas.addEventListener('touchmove', (e) => {
+                if (!isDrawing || !manualLine.start) return;
+                e.preventDefault();
+                const currentPos = getEventPos(imageCanvas, e);
+                ctx.drawImage(loadedImage, 0, 0, imageCanvas.width, imageCanvas.height);
+                ctx.beginPath();
+                ctx.moveTo(manualLine.start.x, manualLine.start.y);
+                ctx.lineTo(currentPos.x, currentPos.y);
+                ctx.strokeStyle = '#f1c40f';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+            });
+
+            imageCanvas.addEventListener('touchend', (e) => {
+                if (!isDrawing) return;
+                e.preventDefault();
+                isDrawing = false;
+                manualLine.end = getEventPos(imageCanvas, e);
             });
 
             let cvWorker = new Worker('cv-worker.js');
