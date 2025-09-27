@@ -591,25 +591,27 @@
                     }
 
                     // --- 4. Build PDF Document ---
-                    const processText = (text) => isFa ? doc.splitTextToSize(text, 180).reverse().join('\n') : doc.splitTextToSize(text, 180);
+                    const pageWidth = doc.internal.pageSize.getWidth();
+                    const pageMargin = 15;
 
                     doc.setFontSize(22);
-                    doc.text(reportTitle, 105, 20, { align: 'center' });
+                    doc.text(reportTitle, isFa ? pageWidth - pageMargin : pageWidth / 2, 20, { align: isFa ? 'right' : 'center' });
 
                     doc.setFontSize(12);
-                    doc.text(reportDate, 105, 30, { align: 'center' });
+                    doc.text(reportDate, isFa ? pageWidth - pageMargin : pageWidth / 2, 30, { align: isFa ? 'right' : 'center' });
 
+                    let yPos = 40;
                     if (reportDesc) {
-                        doc.setFontSize(12);
-                        const descLines = doc.splitTextToSize(reportDesc, 180);
-                        doc.text(descLines, 15, 40);
+                        const descLines = doc.splitTextToSize(reportDesc, pageWidth - (pageMargin * 2));
+                        doc.text(descLines, isFa ? pageWidth - pageMargin : pageMargin, yPos, { align: isFa ? 'right' : 'left' });
+                        yPos += (descLines.length * 5) + 10;
+                    } else {
+                        yPos = 45;
                     }
-
-                    let yPos = reportDesc ? 55 : 45;
 
                     // --- Summary Table ---
                     doc.setFontSize(16);
-                    doc.text(translations[currentLang]['results_title'], 15, yPos);
+                    doc.text(translations[currentLang]['results_title'], isFa ? pageWidth - pageMargin : pageMargin, yPos, { align: isFa ? 'right' : 'left' });
                     yPos += 5;
                     const summaryBody = [
                         ...Object.entries(dValues).map(([key, value]) => [key, value.toFixed(3)]),
@@ -631,11 +633,11 @@
 
                     // --- Text Analysis ---
                     doc.setFontSize(16);
-                    doc.text(translations[currentLang]['analysis_title'], 15, yPos);
+                    doc.text(translations[currentLang]['analysis_title'], isFa ? pageWidth - pageMargin : pageMargin, yPos, { align: isFa ? 'right' : 'left' });
                     yPos += 8;
                     doc.setFontSize(11);
-                    const analysisLines = doc.splitTextToSize(analysisText, 180);
-                    doc.text(analysisLines, 15, yPos, { align: isFa ? 'right' : 'left' });
+                    const analysisLines = doc.splitTextToSize(analysisText, pageWidth - (pageMargin * 2));
+                    doc.text(analysisLines, isFa ? pageWidth - pageMargin : pageMargin, yPos, { align: isFa ? 'right' : 'left' });
                     yPos += analysisLines.length * 5 + 10;
 
                     // --- Charts ---
@@ -649,7 +651,7 @@
                     // --- Raw Data Table ---
                     doc.addPage();
                     doc.setFontSize(16);
-                    doc.text("Raw Data", 105, 15, { align: 'center' });
+                    doc.text(translations[currentLang]['raw_data_title'] || "Raw Data", isFa ? pageWidth - pageMargin : pageWidth / 2, 15, { align: isFa ? 'right' : 'center' });
                     const rawDataBody = sieves.map(s => [
                         s.isPan ? translations[currentLang]['pan'] : s.size.toString(),
                         s.weight.toString(),
@@ -761,7 +763,7 @@
                     retained_75mm: "Percent Greater than 75mm:", retained_45mm: "Percent Greater than 45mm:",
                     alert_no_weight: "Total weight cannot be zero. Please enter retained weights.", alert_no_calculation: "Please perform a calculation first.", generating: "Generating...",
                     pdf_modal_title: "PDF Report Information", pdf_modal_report_title: "Report Title", pdf_modal_report_desc: "Description", pdf_modal_report_date: "Date",
-                    pdf_modal_cancel: "Cancel", pdf_modal_confirm: "Generate Report", pan: "Pan",
+                    pdf_modal_cancel: "Cancel", pdf_modal_confirm: "Generate Report", pan: "Pan", raw_data_title: "Raw Data",
                     chart_title_passing: "Cumulative Passing Curve", chart_title_retained: "Cumulative Retained Curve", chart_title_histogram: "Histogram (Percent Retained)",
                     chart_xaxis_label: "Sieve Size (µm) - Log Scale", chart_yaxis_passing: "Passing (%)", chart_yaxis_retained: "Retained (%)", chart_yaxis_retained_hist: "Percent Retained (%)",
                     chart_legend_passing: "Cumulative Passing", chart_legend_retained: "Cumulative Retained", chart_legend_retained_hist: "Percent Retained", mean_label: "Mean", std_dev_label: "Std Dev",
@@ -807,7 +809,7 @@
                     retained_75mm: "درصد بزرگتر از ۷۵ میلی متر:", retained_45mm: "درصد بزرگتر از ۴۵ میلی متر:",
                     alert_no_weight: "وزن کل نمی‌تواند صفر باشد. لطفاً وزن‌های باقی‌مانده را وارد کنید.", alert_no_calculation: "لطفاً ابتدا یک محاسبه انجام دهید.", generating: "در حال تولید...",
                     pdf_modal_title: "اطلاعات گزارش PDF", pdf_modal_report_title: "عنوان گزارش", pdf_modal_report_desc: "توضیحات", pdf_modal_report_date: "تاریخ",
-                    pdf_modal_cancel: "انصراف", pdf_modal_confirm: "تولید گزارش", pan: "سینی",
+                    pdf_modal_cancel: "انصراف", pdf_modal_confirm: "تولید گزارش", pan: "سینی", raw_data_title: "داده‌های خام",
                     chart_title_passing: "منحنی تجمعی عبوری", chart_title_retained: "منحنی تجمعی باقی‌مانده", chart_title_histogram: "هیستوگرام (درصد باقی‌مانده)",
                     chart_xaxis_label: "اندازه سرند (µm) - مقیاس لگاریتمی", chart_yaxis_passing: "درصد عبوری (%)", chart_yaxis_retained: "درصد باقی‌مانده (%)", chart_yaxis_retained_hist: "درصد باقی‌مانده (%)",
                     chart_legend_passing: "عبوری تجمعی", chart_legend_retained: "باقی‌مانده تجمعی", chart_legend_retained_hist: "درصد باقی‌مانده", mean_label: "میانگین", std_dev_label: "انحراف معیار",
