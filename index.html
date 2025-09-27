@@ -430,18 +430,16 @@
                     workbook.creator = 'Sieve Analysis App';
                     workbook.created = new Date();
 
-                    // --- 1. Summary Sheet ---
-                    const summarySheet = workbook.addWorksheet('Summary');
                     const { sieves, dValues, coeffs, stats, analysisText } = lastCalculationData;
                     const isFa = currentLang === 'fa';
 
-                    // Title
+                    // --- 1. Summary Sheet ---
+                    const summarySheet = workbook.addWorksheet('Summary');
                     summarySheet.mergeCells('A1:E1');
                     summarySheet.getCell('A1').value = translations[currentLang]['title'];
                     summarySheet.getCell('A1').font = { size: 16, bold: true };
                     summarySheet.getCell('A1').alignment = { horizontal: 'center' };
 
-                    // Summary Data
                     const summaryData = [
                         ['D10', dValues.d10], ['D30', dValues.d30], ['D50', dValues.d50],
                         ['D60', dValues.d60], ['D80', dValues.d80],
@@ -453,24 +451,19 @@
                         [translations[currentLang]['retained_45mm'], stats.retained45mm]
                     ];
 
-                    let currentRow = 3;
                     summaryData.forEach(([label, value]) => {
-                        if (value !== null && typeof value !== 'undefined') {
-                            const row = summarySheet.addRow([label, parseFloat(value.toFixed(3))]);
-                            row.getCell(1).font = { bold: true };
-                        }
+                        const displayValue = (value !== null && typeof value !== 'undefined') ? parseFloat(value.toFixed(3)) : 'N/A';
+                        const row = summarySheet.addRow([label, displayValue]);
+                        row.getCell(1).font = { bold: true };
                     });
 
                     summarySheet.getColumn('A').width = 30;
                     summarySheet.getColumn('B').width = 15;
 
-                    // Text Analysis
-                    const analysisRow = summarySheet.addRow([]); // Spacer
                     const analysisHeaderRow = summarySheet.addRow([translations[currentLang]['analysis_title']]);
                     analysisHeaderRow.getCell(1).font = { bold: true, size: 14 };
                     const analysisContentRow = summarySheet.addRow([analysisText]);
                     analysisContentRow.getCell(1).alignment = { wrapText: true };
-
 
                     // --- 2. Chart Images ---
                     const charts = [
@@ -478,14 +471,11 @@
                         { id: 'retained-curve-chart', col: 'D' },
                         { id: 'histogram-chart', col: 'D' }
                     ];
-                    let chartY = 2; // Start charts in row 2
+                    let chartY = 2;
                     for (const chart of charts) {
                         const canvas = await html2canvas(document.getElementById(chart.id));
                         const imageBase64 = canvas.toDataURL('image/png');
-                        const imageId = workbook.addImage({
-                            base64: imageBase64,
-                            extension: 'png',
-                        });
+                        const imageId = workbook.addImage({ base64: imageBase64, extension: 'png' });
                         summarySheet.addImage(imageId, `${chart.col}${chartY}:${chart.col === 'D' ? 'K' : 'S'}${chartY + 15}`);
                         chartY += 17;
                     }
@@ -493,17 +483,16 @@
                     // --- 3. Raw Data Sheet ---
                     const dataSheet = workbook.addWorksheet('Raw Data');
                     dataSheet.columns = [
-                        { header: translations[currentLang]['sieve_size'], key: 'size', width: 20 },
+                        { header: translations[currentLang]['sieve_size'], key: 'size', width: 25 },
                         { header: translations[currentLang]['retained_weight'], key: 'weight', width: 25, style: { numFmt: '0.00' } },
                         { header: 'Cumulative Retained (%)', key: 'cumRetained', width: 25, style: { numFmt: '0.00' } },
                         { header: 'Cumulative Passing (%)', key: 'cumPassing', width: 25, style: { numFmt: '0.00' } },
                     ];
-
                     const tableBody = sieves.map(s => ({
-                        size: s.isPan ? translations[currentLang]['pan'] : s.size,
-                        weight: s.weight,
-                        cumRetained: s.cumulativeRetainedPercent,
-                        cumPassing: s.passingPercent,
+                        size: s.isPan ? translations[currentLang]['pan'] : (s.size !== null ? s.size : ''),
+                        weight: s.weight !== null ? s.weight : 0,
+                        cumRetained: s.cumulativeRetainedPercent !== null ? parseFloat(s.cumulativeRetainedPercent.toFixed(2)) : 0,
+                        cumPassing: s.passingPercent !== null ? parseFloat(s.passingPercent.toFixed(2)) : 0,
                     }));
                     dataSheet.addRows(tableBody);
 
@@ -513,6 +502,7 @@
 
                 } catch (e) {
                     console.error("Error generating Excel:", e);
+                    alert("An error occurred while generating the Excel file. Please check the console for details.");
                 } finally {
                     exportExcelBtn.textContent = originalButtonText;
                     exportExcelBtn.disabled = false;
@@ -534,121 +524,86 @@
                     return;
                 }
 
-                const { Document, Packer, Paragraph, TextRun, ImageRun, Table, TableCell, TableRow, WidthType, HeadingLevel, AlignmentType, BorderStyle } = docx;
-                const isFa = currentLang === 'fa';
+                const originalButtonText = confirmWordExportBtn.textContent;
+                confirmWordExportBtn.textContent = translations[currentLang]['generating'];
+                confirmWordExportBtn.disabled = true;
 
-                // --- 1. Get Custom User Input & Data ---
-                const reportTitle = document.getElementById('report-title').value || (isFa ? "گزارش تحلیل دانه‌بندی" : "Gradation Analysis Report");
-                const reportDesc = document.getElementById('report-desc').value;
-                const reportDate = document.getElementById('report-date').value;
-                const { sieves, dValues, coeffs, stats, analysisText } = lastCalculationData;
+                try {
+                    const { Document, Packer, Paragraph, TextRun, ImageRun, Table, TableCell, TableRow, WidthType, HeadingLevel, AlignmentType } = docx;
+                    const isFa = currentLang === 'fa';
 
-                // --- 2. Generate Chart Images ---
-                const chartConfigs = [
-                    { id: 'passing-curve-chart', title: translations[currentLang]['chart_title_passing'] },
-                    { id: 'retained-curve-chart', title: translations[currentLang]['chart_title_retained'] },
-                    { id: 'histogram-chart', title: translations[currentLang]['chart_title_histogram'] }
-                ];
-                const chartImages = [];
-                for (const config of chartConfigs) {
-                    const canvas = await html2canvas(document.getElementById(config.id), { backgroundColor: '#34495e' });
-                    chartImages.push({
-                        buffer: canvas.toDataURL('image/png'),
-                        title: config.title
-                    });
-                }
+                    const reportTitle = document.getElementById('report-title').value || (isFa ? "گزارش تحلیل دانه‌بندی" : "Gradation Analysis Report");
+                    const reportDesc = document.getElementById('report-desc').value;
+                    const reportDate = document.getElementById('report-date').value;
+                    const { sieves, dValues, coeffs, stats, analysisText } = lastCalculationData;
 
-                // --- 3. Define Styles ---
-                const doc = new Document({
-                    creator: "Sieve Analysis App",
-                    title: reportTitle,
-                    description: reportDesc,
-                    styles: {
-                        default: {
-                            heading1: { run: { size: 44, bold: true, color: "2E74B5" }, paragraph: { spacing: { before: 240, after: 120 } } },
-                            heading2: { run: { size: 28, bold: true, color: "2E74B5" }, paragraph: { spacing: { before: 240, after: 120 } } },
-                        },
-                    },
-                    features: {
-                        updateFields: true,
-                    },
-                    settings: {
-                        compatabilityMode: docx.CompatibilityMode.WORD_2010,
-                        view: new docx.View({ rtl: isFa }),
-                    },
-                    sections: [{
+                    const chartConfigs = [
+                        { id: 'passing-curve-chart', title: translations[currentLang]['chart_title_passing'] },
+                        { id: 'retained-curve-chart', title: translations[currentLang]['chart_title_retained'] },
+                        { id: 'histogram-chart', title: translations[currentLang]['chart_title_histogram'] }
+                    ];
+                    const chartImages = [];
+                    for (const config of chartConfigs) {
+                        const canvas = await html2canvas(document.getElementById(config.id), { backgroundColor: '#34495e' });
+                        chartImages.push({ buffer: canvas.toDataURL('image/png'), title: config.title });
+                    }
+
+                    const toFixedOrNA = (val, dp) => (val !== null && typeof val !== 'undefined') ? val.toFixed(dp) : 'N/A';
+
+                    const summaryRows = [
+                        ...Object.entries(dValues).map(([key, value]) => new TableRow({ children: [new TableCell({ children: [new Paragraph(key)] }), new TableCell({ children: [new Paragraph(toFixedOrNA(value, 3))] })] })),
+                        new TableRow({ children: [new TableCell({ children: [new Paragraph("Cu")] }), new TableCell({ children: [new Paragraph(toFixedOrNA(coeffs.cu, 2))] })] }),
+                        new TableRow({ children: [new TableCell({ children: [new Paragraph("Cc")] }), new TableCell({ children: [new Paragraph(toFixedOrNA(coeffs.cc, 2))] })] }),
+                        new TableRow({ children: [new TableCell({ children: [new Paragraph("Fineness Modulus")] }), new TableCell({ children: [new Paragraph(toFixedOrNA(stats.fm, 2))] })] }),
+                        new TableRow({ children: [new TableCell({ children: [new Paragraph("Retained > 75mm (%)")] }), new TableCell({ children: [new Paragraph(toFixedOrNA(stats.retained75mm, 2))] })] }),
+                        new TableRow({ children: [new TableCell({ children: [new Paragraph("Retained > 45mm (%)")] }), new TableCell({ children: [new Paragraph(toFixedOrNA(stats.retained45mm, 2))] })] }),
+                    ];
+
+                    const dataRows = sieves.map(sieve => new TableRow({
                         children: [
-                            new Paragraph({ text: reportTitle, heading: HeadingLevel.TITLE, alignment: AlignmentType.CENTER }),
-                            new Paragraph({ text: reportDate, alignment: AlignmentType.CENTER, style: "IntenseQuote" }),
-                            new Paragraph({ text: reportDesc, spacing: { after: 300 } }),
+                            new TableCell({ children: [new Paragraph(sieve.isPan ? translations[currentLang]['pan'] : (sieve.size !== null ? sieve.size.toString() : ''))] }),
+                            new TableCell({ children: [new Paragraph(sieve.weight !== null ? sieve.weight.toString() : '0')] }),
+                            new TableCell({ children: [new Paragraph(toFixedOrNA(sieve.cumulativeRetainedPercent, 2))] }),
+                            new TableCell({ children: [new Paragraph(toFixedOrNA(sieve.passingPercent, 2))] }),
+                        ],
+                    }));
 
-                            // --- Summary Table ---
-                            new Paragraph({ text: translations[currentLang]['results_title'], heading: HeadingLevel.HEADING_1 }),
-                            new Table({
-                                width: { size: 100, type: WidthType.PERCENTAGE },
-                                rows: [
-                                    new TableRow({
-                                        children: [
-                                            new TableCell({ children: [new Paragraph({text: "Parameter", children: [new TextRun({bold: true})]})]}),
-                                            new TableCell({ children: [new Paragraph({text: "Value", children: [new TextRun({bold: true})]})]}),
-                                        ],
-                                    }),
-                                    ...Object.entries(dValues).map(([key, value]) => new TableRow({ children: [new TableCell({ children: [new Paragraph(key)] }), new TableCell({ children: [new Paragraph(value.toFixed(3))] })] })),
-                                    new TableRow({ children: [new TableCell({ children: [new Paragraph("Cu")] }), new TableCell({ children: [new Paragraph(coeffs.cu.toFixed(2))] })] }),
-                                    new TableRow({ children: [new TableCell({ children: [new Paragraph("Cc")] }), new TableCell({ children: [new Paragraph(coeffs.cc.toFixed(2))] })] }),
-                                    new TableRow({ children: [new TableCell({ children: [new Paragraph("Fineness Modulus")] }), new TableCell({ children: [new Paragraph(stats.fm.toFixed(2))] })] }),
-                                    new TableRow({ children: [new TableCell({ children: [new Paragraph("Retained > 75mm (%)")] }), new TableCell({ children: [new Paragraph(stats.retained75mm.toFixed(2))] })] }),
-                                    new TableRow({ children: [new TableCell({ children: [new Paragraph("Retained > 45mm (%)")] }), new TableCell({ children: [new Paragraph(stats.retained45mm.toFixed(2))] })] }),
-                                ],
-                            }),
+                    const doc = new Document({
+                        creator: "Sieve Analysis App",
+                        title: reportTitle,
+                        description: reportDesc,
+                        styles: { default: { heading1: { run: { size: 32, bold: true, color: "2E74B5" } }, heading2: { run: { size: 26, bold: true } } } },
+                        features: { updateFields: true },
+                        settings: { view: new docx.View({ rtl: isFa }) },
+                        sections: [{
+                            children: [
+                                new Paragraph({ text: reportTitle, heading: HeadingLevel.TITLE, alignment: AlignmentType.CENTER }),
+                                new Paragraph({ text: reportDate, alignment: AlignmentType.CENTER, style: "IntenseQuote" }),
+                                new Paragraph({ text: reportDesc, spacing: { after: 300 } }),
+                                new Paragraph({ text: translations[currentLang]['results_title'], heading: HeadingLevel.HEADING_1 }),
+                                new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [new TableRow({ children: [new TableCell({ children: [new Paragraph({ text: "Parameter", style: "strong" })] }), new TableCell({ children: [new Paragraph({ text: "Value", style: "strong" })] })] }), ...summaryRows] }),
+                                new Paragraph({ text: translations[currentLang]['analysis_title'], heading: HeadingLevel.HEADING_1 }),
+                                new Paragraph({ text: analysisText, spacing: { after: 300 } }),
+                                new Paragraph({ text: translations[currentLang]['charts_title'], heading: HeadingLevel.HEADING_1, pageBreakBefore: true }),
+                                ...chartImages.flatMap(img => [new Paragraph({ children: [new ImageRun({ data: img.buffer, transformation: { width: 550, height: 275 } })], alignment: AlignmentType.CENTER }), new Paragraph({ text: img.title, alignment: AlignmentType.CENTER, style: "Caption" })]),
+                                new Paragraph({ text: "Raw Data", heading: HeadingLevel.HEADING_1, pageBreakBefore: true }),
+                                new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [new TableRow({ children: [new TableCell({ children: [new Paragraph(translations[currentLang]['sieve_size'])] }), new TableCell({ children: [new Paragraph(translations[currentLang]['retained_weight'])] }), new TableCell({ children: [new Paragraph('Cumulative Retained (%)')] }), new TableCell({ children: [new Paragraph('Passing (%)')] })] }), ...dataRows] }),
+                            ]
+                        }]
+                    });
 
-                            // --- Text Analysis ---
-                            new Paragraph({ text: translations[currentLang]['analysis_title'], heading: HeadingLevel.HEADING_1 }),
-                            new Paragraph({ text: analysisText, spacing: { after: 300 } }),
+                    Packer.toBlob(doc).then(blob => {
+                        saveAs(blob, "Sieve_Analysis_Report.docx");
+                    });
 
-                            // --- Charts ---
-                            new Paragraph({ text: translations[currentLang]['charts_title'], heading: HeadingLevel.HEADING_1, pageBreakBefore: true }),
-                            ...chartImages.flatMap(img => [
-                                new Paragraph({
-                                    children: [new ImageRun({ data: img.buffer, transformation: { width: 600, height: 300 } })],
-                                    alignment: AlignmentType.CENTER
-                                }),
-                                new Paragraph({ text: img.title, alignment: AlignmentType.CENTER, style: "Caption" })
-                            ]),
-
-                            // --- Raw Data Table ---
-                            new Paragraph({ text: "Raw Data", heading: HeadingLevel.HEADING_1, pageBreakBefore: true }),
-                            new Table({
-                                width: { size: 100, type: WidthType.PERCENTAGE },
-                                rows: [
-                                    new TableRow({
-                                        children: [
-                                            new TableCell({ children: [new Paragraph(translations[currentLang]['sieve_size'])] }),
-                                            new TableCell({ children: [new Paragraph(translations[currentLang]['retained_weight'])] }),
-                                            new TableCell({ children: [new Paragraph('Cumulative Retained (%)')] }),
-                                            new TableCell({ children: [new Paragraph('Passing (%)')] }),
-                                        ],
-                                    }),
-                                    ...sieves.map(sieve => new TableRow({
-                                        children: [
-                                            new TableCell({ children: [new Paragraph(sieve.isPan ? translations[currentLang]['pan'] : sieve.size.toString())] }),
-                                            new TableCell({ children: [new Paragraph(sieve.weight.toString())] }),
-                                            new TableCell({ children: [new Paragraph(sieve.cumulativeRetainedPercent.toFixed(2))] }),
-                                            new TableCell({ children: [new Paragraph(sieve.passingPercent.toFixed(2))] }),
-                                        ],
-                                    }))
-                                ]
-                            })
-                        ]
-                    }]
-                });
-
-                // --- 4. Save Document ---
-                Packer.toBlob(doc).then(blob => {
-                    saveAs(blob, "Sieve_Analysis_Report.docx");
-                });
-
-                wordModal.style.display = 'none';
+                } catch (e) {
+                    console.error("Error generating Word file:", e);
+                    alert("An error occurred while generating the Word file. Please check the console for details.");
+                } finally {
+                    confirmWordExportBtn.textContent = originalButtonText;
+                    confirmWordExportBtn.disabled = false;
+                    wordModal.style.display = 'none';
+                }
             }
 
             function updateCharts() {
