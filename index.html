@@ -613,6 +613,7 @@
                     doc.setFontSize(16);
                     doc.text(translations[currentLang]['results_title'], isFa ? pageWidth - pageMargin : pageMargin, yPos, { align: isFa ? 'right' : 'left' });
                     yPos += 5;
+                    const summaryHead = [['Parameter', 'Value']];
                     const summaryBody = [
                         ...Object.entries(dValues).map(([key, value]) => [key, value.toFixed(3)]),
                         ['Cu', coeffs.cu.toFixed(2)],
@@ -621,14 +622,24 @@
                         ['Retained > 75mm (%)', stats.retained75mm.toFixed(2)],
                         ['Retained > 45mm (%)', stats.retained45mm.toFixed(2)],
                     ];
-                    doc.autoTable({
+
+                    const summaryTableOptions = {
                         startY: yPos,
-                        head: [['Parameter', 'Value']],
-                        body: summaryBody,
                         theme: 'grid',
-                        headStyles: { fillColor: [44, 62, 80] },
+                        headStyles: { fillColor: [44, 62, 80], font: 'Vazirmatn' },
                         styles: { font: 'Vazirmatn' }
-                    });
+                    };
+
+                    if (isFa) {
+                        summaryTableOptions.head = summaryHead.map(row => row.reverse());
+                        summaryTableOptions.body = summaryBody.map(row => row.reverse());
+                        summaryTableOptions.headStyles.halign = 'right';
+                        summaryTableOptions.styles.halign = 'right';
+                    } else {
+                        summaryTableOptions.head = summaryHead;
+                        summaryTableOptions.body = summaryBody;
+                    }
+                    doc.autoTable(summaryTableOptions);
                     yPos = doc.autoTable.previous.finalY + 15;
 
                     // --- Text Analysis ---
@@ -652,25 +663,36 @@
                     doc.addPage();
                     doc.setFontSize(16);
                     doc.text(translations[currentLang]['raw_data_title'] || "Raw Data", isFa ? pageWidth - pageMargin : pageWidth / 2, 15, { align: isFa ? 'right' : 'center' });
+                    const rawDataHead = [[
+                        translations[currentLang]['sieve_size'],
+                        translations[currentLang]['retained_weight'],
+                        'Cumulative Retained (%)',
+                        'Passing (%)'
+                    ]];
                     const rawDataBody = sieves.map(s => [
                         s.isPan ? translations[currentLang]['pan'] : s.size.toString(),
                         s.weight.toString(),
                         s.cumulativeRetainedPercent.toFixed(2),
                         s.passingPercent.toFixed(2)
                     ]);
-                    doc.autoTable({
+
+                    const rawTableOptions = {
                         startY: 25,
-                        head: [[
-                            translations[currentLang]['sieve_size'],
-                            translations[currentLang]['retained_weight'],
-                            'Cumulative Retained (%)',
-                            'Passing (%)'
-                        ]],
-                        body: rawDataBody,
                         theme: 'grid',
-                        headStyles: { fillColor: [44, 62, 80] },
+                        headStyles: { fillColor: [44, 62, 80], font: 'Vazirmatn' },
                         styles: { font: 'Vazirmatn' }
-                    });
+                    };
+
+                    if (isFa) {
+                        rawTableOptions.head = rawDataHead.map(row => row.reverse());
+                        rawTableOptions.body = rawDataBody.map(row => row.reverse());
+                        rawTableOptions.headStyles.halign = 'right';
+                        rawTableOptions.styles.halign = 'right';
+                    } else {
+                        rawTableOptions.head = rawDataHead;
+                        rawTableOptions.body = rawDataBody;
+                    }
+                    doc.autoTable(rawTableOptions);
 
                     // --- 5. Save Document ---
                     doc.save("Sieve_Analysis_Report.pdf");
