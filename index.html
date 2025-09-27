@@ -43,6 +43,12 @@
         .chart-container { margin-top: 20px; padding: 15px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--secondary-bg-color); }
         [dir="ltr"] body { text-align: left; }
         [dir="rtl"] body { text-align: right; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.7); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background-color: var(--secondary-bg-color); padding: 30px; border-radius: 8px; width: 90%; max-width: 500px; border: 1px solid var(--border-color); box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+        .modal-content h3 { margin-top: 0; color: var(--secondary-accent-color); border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 20px; }
+        .modal-content label { display: block; margin-top: 15px; margin-bottom: 5px; color: var(--text-color); }
+        .modal-content input[type="text"], .modal-content textarea { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid var(--border-color); background-color: var(--input-bg-color); color: var(--text-color); font-size: 1em; box-sizing: border-box; }
+        .modal-actions { margin-top: 25px; display: flex; justify-content: flex-end; gap: 10px; }
     </style>
 </head>
 <body>
@@ -51,7 +57,7 @@
             <h1 data-lang-key="header_title">آنالیز دانه‌بندی مصالح</h1>
             <div class="toolbar">
                 <button id="lang-toggle" data-lang-key="lang_button">English</button>
-                <button id="export-pdf" data-lang-key="export_pdf">خروجی PDF</button>
+                <button id="export-word" data-lang-key="export_word">خروجی Word</button>
                 <button id="export-excel" data-lang-key="export_excel">خروجی Excel</button>
             </div>
         </header>
@@ -96,6 +102,8 @@
                     <p><strong data-lang-key="cc">ضریب انحنا (Cc):</strong> <span id="cc-value">-</span></p>
                     <p><strong data-lang-key="mean">میانگین وزنی (μm):</strong> <span id="mean-value">-</span></p>
                     <p><strong data-lang-key="std_dev">انحراف معیار:</strong> <span id="std-dev-value">-</span></p>
+                    <p><strong data-lang-key="retained_75mm">درصد بزرگتر از ۷۵ میلی متر:</strong> <span id="retained-75mm-value">-</span></p>
+                    <p><strong data-lang-key="retained_45mm">درصد بزرگتر از ۴۵ میلی متر:</strong> <span id="retained-45mm-value">-</span></p>
                 </div>
                 <div id="text-analysis-container" style="margin-top: 20px;">
                     <h3 data-lang-key="analysis_title">تحلیل متنی</h3>
@@ -110,10 +118,31 @@
             </section>
         </main>
     </div>
+    <div id="word-export-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h3 data-lang-key="word_modal_title">اطلاعات گزارش Word</h3>
+            <div>
+                <label for="report-title" data-lang-key="word_modal_report_title">عنوان گزارش</label>
+                <input type="text" id="report-title" placeholder="مثال: نتایج آنالیز سرندی سنگ شکن شماره ۲">
+            </div>
+            <div>
+                <label for="report-desc" data-lang-key="word_modal_report_desc">توضیحات</label>
+                <textarea id="report-desc" rows="4" placeholder="مثال: نمونه مربوط به ده روز دوم خرداد ماه ۱۴۰۲ می‌باشد."></textarea>
+            </div>
+            <div>
+                <label for="report-date" data-lang-key="word_modal_report_date">تاریخ</label>
+                <input type="text" id="report-date">
+            </div>
+            <div class="modal-actions">
+                <button id="cancel-word-export" data-lang-key="word_modal_cancel">انصراف</button>
+                <button id="confirm-word-export" data-lang-key="word_modal_confirm">تولید گزارش</button>
+            </div>
+        </div>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/docx@9.5.1/dist/index.iife.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/1.4.0/chartjs-plugin-annotation.min.js"></script>
     <script>
@@ -125,11 +154,17 @@
             let passingChart, retainedChart, histogramChart;
             let lastCalculationData = null;
 
-            const exportPdfBtn = document.getElementById('export-pdf');
+            const exportWordBtn = document.getElementById('export-word');
             const exportExcelBtn = document.getElementById('export-excel');
             const langToggleBtn = document.getElementById('lang-toggle');
+            const wordModal = document.getElementById('word-export-modal');
+            const cancelWordExportBtn = document.getElementById('cancel-word-export');
+            const confirmWordExportBtn = document.getElementById('confirm-word-export');
+            const reportDateInput = document.getElementById('report-date');
 
-            exportPdfBtn.addEventListener('click', exportToPDF);
+            exportWordBtn.addEventListener('click', showWordModal);
+            cancelWordExportBtn.addEventListener('click', () => wordModal.style.display = 'none');
+            confirmWordExportBtn.addEventListener('click', exportToWord);
             exportExcelBtn.addEventListener('click', exportToExcel);
             langToggleBtn.addEventListener('click', toggleLanguage);
 
@@ -250,16 +285,36 @@
                 document.getElementById('mean-value').textContent = weightedMean.toFixed(3);
                 document.getElementById('std-dev-value').textContent = standardDeviation.toFixed(2);
 
+                const passing75mm = getPassingForDiameter(75000, passingData) ?? 0;
+                const passing45mm = getPassingForDiameter(45000, passingData) ?? 0;
+                const retained75mm = 100 - passing75mm;
+                const retained45mm = 100 - passing45mm;
+
+                document.getElementById('retained-75mm-value').textContent = retained75mm.toFixed(2) + ' %';
+                document.getElementById('retained-45mm-value').textContent = retained45mm.toFixed(2) + ' %';
+
+                const materialType = document.getElementById('material-type').value;
+                const fmSieveSizes = [9500, 4750, 2360, 1180, 600, 300, 150]; // Standard sieves for FM
+                const cumulativeRetainedOnFMSieves = sieves
+                    .filter(s => fmSieveSizes.includes(s.size))
+                    .reduce((sum, s) => sum + s.cumulativeRetainedPercent, 0);
+                const finenessModulus = cumulativeRetainedOnFMSieves > 0 ? cumulativeRetainedOnFMSieves / 100 : 0;
+
                 const dValues = { d10, d30, d50, d60, d80 };
                 const coeffs = { cu, cc };
-                const analysisKeys = generateTextAnalysis(cu, cc, sieves);
-                const analysisText = analysisKeys.map(key => translations[currentLang][key] || key).join(' ');
+                const stats = { mean: weightedMean, stdDev: standardDeviation, retained75mm, retained45mm, fm: finenessModulus };
+
+                const analysisKeys = generateTextAnalysis(coeffs, sieves, stats, materialType);
+                const analysisText = analysisKeys.map(key => {
+                    if (typeof key === 'object') {
+                        return (translations[currentLang][key.key] || key.key).replace('{value}', key.value);
+                    }
+                    return translations[currentLang][key] || key;
+                }).join(' ');
                 document.getElementById('text-analysis-output').textContent = analysisText;
 
                 lastCalculationData = {
-                    sieves, dValues, coeffs, analysisKeys, analysisText,
-                    stats: { mean: weightedMean, stdDev: standardDeviation },
-                    passingData
+                    sieves, dValues, coeffs, analysisKeys, analysisText, stats, passingData
                 };
 
                 document.getElementById('results').style.display = 'block';
@@ -267,184 +322,306 @@
                 updateCharts();
             }
 
-            function generateTextAnalysis(cu, cc, sieves) {
+            function generateTextAnalysis(coeffs, sieves, stats, materialType) {
+                const { cu, cc } = coeffs;
+                const { fm } = stats;
+                const keys = [];
+
                 const passing75micron = sieves.find(s => s.size === 75)?.passingPercent;
                 if (passing75micron === undefined) return ['analysis_err_no_fines'];
-                if (cu === 0 || cc === 0) return ['analysis_err_no_coeffs'];
+
                 const passing4750micron = sieves.find(s => s.size === 4750)?.passingPercent;
                 if (passing4750micron === undefined) return ['analysis_err_no_split'];
 
                 const finesPercent = passing75micron;
                 const gravelPercent = 100 - passing4750micron;
-                const keys = [];
-                if (gravelPercent > (100 - finesPercent - gravelPercent)) {
-                    keys.push('analysis_base_gravel');
-                    if (finesPercent < 5) {
-                        keys.push('analysis_fines_lt_5');
-                        if (cu >= 4 && cc >= 1 && cc <= 3) keys.push('analysis_gw'); else keys.push('analysis_gp');
-                    } else if (finesPercent > 12) {
-                        keys.push('analysis_fines_gt_12', 'analysis_plasticity_gm_gc');
-                    } else {
-                        keys.push('analysis_fines_borderline', 'analysis_dual_symbol_gravel');
-                    }
+                const sandPercent = 100 - finesPercent - gravelPercent;
+
+                keys.push('analysis_title_uscs');
+                if (finesPercent > 50) {
+                    keys.push('analysis_fine_grained');
                 } else {
-                    keys.push('analysis_base_sand');
-                    if (finesPercent < 5) {
-                        keys.push('analysis_fines_lt_5');
-                        if (cu >= 6 && cc >= 1 && cc <= 3) keys.push('analysis_sw'); else keys.push('analysis_sp');
-                    } else if (finesPercent > 12) {
-                        keys.push('analysis_fines_gt_12', 'analysis_plasticity_sm_sc');
+                    keys.push({key: 'analysis_coarse_grained', value: (100-finesPercent).toFixed(1)});
+                    const coarseFractionIsGravel = gravelPercent > sandPercent;
+
+                    if (coarseFractionIsGravel) {
+                        keys.push({key: 'analysis_base_gravel', value: gravelPercent.toFixed(1)});
+                        if (finesPercent < 5) {
+                            keys.push('analysis_fines_lt_5');
+                            if (cu >= 4 && cc >= 1 && cc <= 3) keys.push('analysis_gw'); else keys.push('analysis_gp');
+                        } else if (finesPercent > 12) {
+                            keys.push('analysis_fines_gt_12', 'analysis_plasticity_gm_gc');
+                        } else {
+                            keys.push('analysis_fines_borderline', 'analysis_dual_symbol_gravel');
+                        }
                     } else {
-                        keys.push('analysis_fines_borderline', 'analysis_dual_symbol_sand');
+                        keys.push({key: 'analysis_base_sand', value: sandPercent.toFixed(1)});
+                        if (finesPercent < 5) {
+                            keys.push('analysis_fines_lt_5');
+                            if (cu >= 6 && cc >= 1 && cc <= 3) keys.push('analysis_sw'); else keys.push('analysis_sp');
+                        } else if (finesPercent > 12) {
+                            keys.push('analysis_fines_gt_12', 'analysis_plasticity_sm_sc');
+                        } else {
+                            keys.push('analysis_fines_borderline', 'analysis_dual_symbol_sand');
+                        }
+                    }
+                    if (cu && cc) {
+                        keys.push({key: 'analysis_cu_value', value: cu.toFixed(2)});
+                        keys.push({key: 'analysis_cc_value', value: cc.toFixed(2)});
                     }
                 }
+
+                // Specific analysis based on material type
+                if (materialType === 'concrete-aggregates') {
+                    keys.push('analysis_title_concrete');
+                    if (fm && fm > 0) {
+                        keys.push({key: 'analysis_fm_value', value: fm.toFixed(2)});
+                        if (fm >= 2.3 && fm <= 3.1) keys.push('analysis_fm_good');
+                        else if (fm < 2.3) keys.push('analysis_fm_fine');
+                        else keys.push('analysis_fm_coarse');
+                    } else {
+                        keys.push('analysis_fm_na');
+                    }
+                } else if (materialType === 'crushed-rock') {
+                    keys.push('analysis_title_crusher');
+                    const maxSieve = sieves.filter(s => !s.isPan)[0];
+                    if (maxSieve) {
+                        keys.push({key: 'analysis_crusher_max_size', value: (maxSieve.size / 1000).toFixed(1) });
+                    }
+                }
+
                 return keys;
             }
 
-            function exportToExcel() {
-                if (!lastCalculationData) { alert(translations[currentLang]['alert_no_calculation']); return; }
-                const { sieves, dValues, coeffs, stats, analysisText } = lastCalculationData;
-                const isFa = currentLang === 'fa';
-                const today = new Date().toLocaleDateString(isFa ? 'fa-IR' : 'en-US');
-                const resultsData = sieves.map(s => ({
-                    [isFa ? 'اندازه سرند (µm)' : 'Sieve Size (µm)']: s.isPan ? (isFa ? 'سینی' : 'Pan') : s.size,
-                    [isFa ? 'وزن باقی‌مانده (g)' : 'Retained Weight (g)']: s.weight,
-                    [isFa ? 'باقی‌مانده تجمعی (%)' : 'Cumulative Retained (%)']: s.cumulativeRetainedPercent.toFixed(2),
-                    [isFa ? 'عبوری تجمعی (%)' : 'Cumulative Passing (%)']: s.passingPercent.toFixed(2)
-                }));
-                const ws = XLSX.utils.json_to_sheet(resultsData);
-                const resultsOrigin = 'G';
-                let currentRow = 1;
-                XLSX.utils.sheet_add_aoa(ws, [[isFa ? 'نتایج تحلیل' : 'Analysis Results']], { origin: `${resultsOrigin}${currentRow++}` });
-                XLSX.utils.sheet_add_aoa(ws, [[isFa ? 'تاریخ' : 'Date', today]], { origin: `${resultsOrigin}${currentRow++}` });
-                currentRow++;
-                [
-                    ['D10', dValues.d10.toFixed(3)], ['D30', dValues.d30.toFixed(3)],
-                    ['D50', dValues.d50.toFixed(3)], ['D60', dValues.d60.toFixed(3)],
-                    ['D80', dValues.d80.toFixed(3)], ['Cu', coeffs.cu ? coeffs.cu.toFixed(2) : 'N/A'],
-                    ['Cc', coeffs.cc ? coeffs.cc.toFixed(2) : 'N/A'],
-                    [isFa ? 'میانگین وزنی (µm)' : 'Weighted Mean (µm)', stats.mean.toFixed(3)],
-                    [isFa ? 'انحراف معیار' : 'Standard Deviation', stats.stdDev.toFixed(2)]
-                ].forEach(item => {
-                    XLSX.utils.sheet_add_aoa(ws, [item], { origin: `${resultsOrigin}${currentRow++}` });
-                });
-                currentRow++;
-                XLSX.utils.sheet_add_aoa(ws, [[isFa ? 'تحلیل متنی' : 'Text Analysis']], { origin: `${resultsOrigin}${currentRow++}` });
-                XLSX.utils.sheet_add_aoa(ws, [doc.splitTextToSize(analysisText, 50)], { origin: `${resultsOrigin}${currentRow}` });
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, 'Gradation Analysis');
-                XLSX.writeFile(wb, 'Gradation_Analysis_Report.xlsx');
-            }
+            async function exportToExcel() {
+                if (!lastCalculationData) {
+                    alert(translations[currentLang]['alert_no_calculation']);
+                    return;
+                }
 
-            async function exportToPDF() {
-                if (!lastCalculationData) { alert(translations[currentLang]['alert_no_calculation']); return; }
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF();
-                const { sieves, dValues, coeffs, stats, analysisText } = lastCalculationData;
-                const originalButtonText = exportPdfBtn.textContent;
-                exportPdfBtn.textContent = translations[currentLang]['generating'];
-                exportPdfBtn.disabled = true;
+                const originalButtonText = exportExcelBtn.textContent;
+                exportExcelBtn.textContent = translations[currentLang]['generating'];
+                exportExcelBtn.disabled = true;
 
                 try {
+                    const workbook = new ExcelJS.Workbook();
+                    workbook.creator = 'Sieve Analysis App';
+                    workbook.created = new Date();
+
+                    // --- 1. Summary Sheet ---
+                    const summarySheet = workbook.addWorksheet('Summary');
+                    const { sieves, dValues, coeffs, stats, analysisText } = lastCalculationData;
                     const isFa = currentLang === 'fa';
-                    // This is a placeholder. In a real app, the Base64 string would be here.
-                    if (isFa && VAZIRMATN_FONT_BASE64 !== "PLACEHOLDER_FOR_VERY_LONG_BASE64_STRING") {
-                        doc.addFileToVFS('Vazirmatn-Regular.ttf', VAZIRMATN_FONT_BASE64);
-                        doc.addFont('Vazirmatn-Regular.ttf', 'Vazirmatn', 'normal');
-                        doc.setFont('Vazirmatn');
-                    } else {
-                        doc.setFont('helvetica');
-                    }
 
-                    const title = translations[currentLang]['pdf_report_title'];
-                    doc.setFontSize(20);
-                    doc.text(title, doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
+                    // Title
+                    summarySheet.mergeCells('A1:E1');
+                    summarySheet.getCell('A1').value = translations[currentLang]['title'];
+                    summarySheet.getCell('A1').font = { size: 16, bold: true };
+                    summarySheet.getCell('A1').alignment = { horizontal: 'center' };
 
-                    const today = new Date().toLocaleDateString(isFa ? 'fa-IR' : 'en-US');
-                    const materialType = document.getElementById('material-type').selectedOptions[0].text;
-                    const standard = document.getElementById('sieve-standard').selectedOptions[0].text;
-                    doc.setFontSize(12);
-
-                    const headerText = [
-                        `${translations[currentLang]['pdf_material_type']}: ${materialType}`,
-                        `${translations[currentLang]['pdf_standard']}: ${standard}`,
-                        `${translations[currentLang]['pdf_date']}: ${today}`
+                    // Summary Data
+                    const summaryData = [
+                        ['D10', dValues.d10], ['D30', dValues.d30], ['D50', dValues.d50],
+                        ['D60', dValues.d60], ['D80', dValues.d80],
+                        [translations[currentLang]['cu'], coeffs.cu],
+                        [translations[currentLang]['cc'], coeffs.cc],
+                        [translations[currentLang]['mean'], stats.mean],
+                        [translations[currentLang]['std_dev'], stats.stdDev],
+                        [translations[currentLang]['retained_75mm'], stats.retained75mm],
+                        [translations[currentLang]['retained_45mm'], stats.retained45mm]
                     ];
-                    if(isFa) {
-                        doc.text(headerText.reverse().join("\n"), 195, 35, { align: 'right' });
-                    } else {
-                        doc.text(headerText.join("\n"), 15, 35);
-                    }
 
-                    const tableHeaders = [[
-                        translations[currentLang]['pdf_sieve_size'],
-                        translations[currentLang]['pdf_retained_wt'],
-                        translations[currentLang]['pdf_cum_retained'],
-                        translations[currentLang]['pdf_cum_passing']
-                    ]];
-                    const tableBody = sieves.map(s => [
-                        s.isPan ? translations[currentLang]['pan'] : s.size,
-                        s.weight,
-                        s.cumulativeRetainedPercent.toFixed(2),
-                        s.passingPercent.toFixed(2)
-                    ]);
-
-                    doc.autoTable({
-                        head: tableHeaders, body: tableBody, startY: 55,
-                        theme: 'grid', headStyles: { fillColor: [44, 62, 80], halign: 'center' },
-                        styles: { font: isFa ? 'Vazirmatn' : 'helvetica', halign: 'center' },
-                        didParseCell: function(data) {
-                            if(isFa) {
-                                // A basic RTL fix for jspdf-autotable
-                                for (let i = 0; i < data.table.body.length; i++) {
-                                    for (let j = 0; j < data.table.body[i].cells.length; j++) {
-                                        let cell = data.table.body[i].cells[j];
-                                        if (typeof cell.text[0] === 'string') {
-                                           cell.text[0] = cell.text[0].split(' ').reverse().join(' ');
-                                        }
-                                    }
-                                }
-                            }
+                    let currentRow = 3;
+                    summaryData.forEach(([label, value]) => {
+                        if (value !== null && typeof value !== 'undefined') {
+                            const row = summarySheet.addRow([label, parseFloat(value.toFixed(3))]);
+                            row.getCell(1).font = { bold: true };
                         }
                     });
 
-                    let finalY = doc.lastAutoTable.finalY + 10;
-                    doc.setFontSize(14);
-                    doc.text(translations[currentLang]['results_title'], 15, finalY);
-                    finalY += 8;
-                    const resultsData = [
-                        ['D10', dValues.d10.toFixed(3)], ['D30', dValues.d30.toFixed(3)],
-                        ['D50', dValues.d50.toFixed(3)], ['D60', dValues.d60.toFixed(3)],
-                        ['D80', dValues.d80.toFixed(3)], ['Cu', coeffs.cu ? coeffs.cu.toFixed(2) : 'N/A'],
-                        ['Cc', coeffs.cc ? coeffs.cc.toFixed(2) : 'N/A'],
-                        [translations[currentLang]['mean'], stats.mean.toFixed(2)],
-                        [translations[currentLang]['std_dev'], stats.stdDev.toFixed(2)]
+                    summarySheet.getColumn('A').width = 30;
+                    summarySheet.getColumn('B').width = 15;
+
+                    // Text Analysis
+                    const analysisRow = summarySheet.addRow([]); // Spacer
+                    const analysisHeaderRow = summarySheet.addRow([translations[currentLang]['analysis_title']]);
+                    analysisHeaderRow.getCell(1).font = { bold: true, size: 14 };
+                    const analysisContentRow = summarySheet.addRow([analysisText]);
+                    analysisContentRow.getCell(1).alignment = { wrapText: true };
+
+
+                    // --- 2. Chart Images ---
+                    const charts = [
+                        { id: 'passing-curve-chart', col: 'D' },
+                        { id: 'retained-curve-chart', col: 'D' },
+                        { id: 'histogram-chart', col: 'D' }
                     ];
-                    doc.autoTable({ body: resultsData, startY: finalY, theme: 'plain', styles: { font: isFa ? 'Vazirmatn' : 'helvetica' }});
-
-                    finalY = doc.lastAutoTable.finalY + 10;
-                    doc.setFontSize(14);
-                    doc.text(translations[currentLang]['analysis_title'], 15, finalY);
-                    finalY += 8;
-                    doc.setFontSize(10);
-                    const analysisLines = doc.splitTextToSize(analysisText, doc.internal.pageSize.getWidth() - 30);
-                    doc.text(analysisLines, 15, finalY, { align: isFa ? 'right' : 'left' });
-
-                    doc.addPage();
-                    let yPos = 20;
-                    for (const chartEl of document.querySelectorAll('.chart-container')) {
-                         const chartCanvas = await html2canvas(chartEl);
-                         doc.addImage(chartCanvas.toDataURL('image/png', 1.0), 'PNG', 15, yPos, 180, 100);
-                         yPos += 110;
+                    let chartY = 2; // Start charts in row 2
+                    for (const chart of charts) {
+                        const canvas = await html2canvas(document.getElementById(chart.id));
+                        const imageBase64 = canvas.toDataURL('image/png');
+                        const imageId = workbook.addImage({
+                            base64: imageBase64,
+                            extension: 'png',
+                        });
+                        summarySheet.addImage(imageId, `${chart.col}${chartY}:${chart.col === 'D' ? 'K' : 'S'}${chartY + 15}`);
+                        chartY += 17;
                     }
-                    doc.save('Gradation_Analysis_Report.pdf');
+
+                    // --- 3. Raw Data Sheet ---
+                    const dataSheet = workbook.addWorksheet('Raw Data');
+                    dataSheet.columns = [
+                        { header: translations[currentLang]['sieve_size'], key: 'size', width: 20 },
+                        { header: translations[currentLang]['retained_weight'], key: 'weight', width: 25, style: { numFmt: '0.00' } },
+                        { header: 'Cumulative Retained (%)', key: 'cumRetained', width: 25, style: { numFmt: '0.00' } },
+                        { header: 'Cumulative Passing (%)', key: 'cumPassing', width: 25, style: { numFmt: '0.00' } },
+                    ];
+
+                    const tableBody = sieves.map(s => ({
+                        size: s.isPan ? translations[currentLang]['pan'] : s.size,
+                        weight: s.weight,
+                        cumRetained: s.cumulativeRetainedPercent,
+                        cumPassing: s.passingPercent,
+                    }));
+                    dataSheet.addRows(tableBody);
+
+                    // --- 4. Generate File ---
+                    const buffer = await workbook.xlsx.writeBuffer();
+                    saveAs(new Blob([buffer]), 'Gradation_Analysis_Report.xlsx');
+
                 } catch (e) {
-                    console.error("Error generating PDF:", e);
-                    alert(translations[currentLang]['pdf_error']);
+                    console.error("Error generating Excel:", e);
                 } finally {
-                    exportPdfBtn.textContent = originalButtonText;
-                    exportPdfBtn.disabled = false;
+                    exportExcelBtn.textContent = originalButtonText;
+                    exportExcelBtn.disabled = false;
                 }
+            }
+
+            function showWordModal() {
+                if (!lastCalculationData) {
+                    alert(translations[currentLang]['alert_no_calculation']);
+                    return;
+                }
+                reportDateInput.value = new Date().toLocaleDateString(currentLang === 'fa' ? 'fa-IR' : 'en-US');
+                wordModal.style.display = 'flex';
+            }
+
+            async function exportToWord() {
+                if (!lastCalculationData) {
+                    alert(translations[currentLang]['alert_no_calculation']);
+                    return;
+                }
+
+                const { Document, Packer, Paragraph, TextRun, ImageRun, Table, TableCell, TableRow, WidthType, BorderStyle } = docx;
+
+                const { sieves, dValues, coeffs, stats, analysisText } = lastCalculationData;
+                const isFa = currentLang === 'fa';
+
+                // --- 1. Get Custom User Input ---
+                const reportTitle = document.getElementById('report-title').value || (isFa ? "گزارش تحلیل دانه‌بندی" : "Gradation Analysis Report");
+                const reportDesc = document.getElementById('report-desc').value;
+                const reportDate = document.getElementById('report-date').value;
+
+                // --- 2. Generate Chart Images ---
+                const chartConfigs = [
+                    { id: 'passing-curve-chart', width: 600, height: 300 },
+                    { id: 'retained-curve-chart', width: 600, height: 300 },
+                    { id: 'histogram-chart', width: 600, height: 300 }
+                ];
+                const chartImages = [];
+                for (const config of chartConfigs) {
+                    const canvas = await html2canvas(document.getElementById(config.id));
+                    chartImages.push({
+                        buffer: canvas.toDataURL('image/png'),
+                        width: config.width,
+                        height: config.height,
+                    });
+                }
+
+                // --- 3. Create Document Structure ---
+                const doc = new Document({
+                    sections: [{
+                        properties: {
+                            page: {
+                                size: {
+                                    orientation: docx.PageOrientation.LANDSCAPE,
+                                },
+                            },
+                        },
+                        children: [
+                            new Paragraph({
+                                children: [new TextRun({ text: reportTitle, bold: true, size: 36 })],
+                                alignment: docx.AlignmentType.CENTER,
+                            }),
+                            new Paragraph({
+                                children: [new TextRun({ text: reportDate, size: 24, italics: true })],
+                                alignment: docx.AlignmentType.CENTER,
+                            }),
+                            new Paragraph({
+                                children: [new TextRun({ text: reportDesc, size: 22 })],
+                                spacing: { after: 200 },
+                            }),
+
+                            // --- 4. Add Summary Table ---
+                            new Paragraph({ text: "Summary Results", style: "Well Spaced", heading: docx.HeadingLevel.HEADING_1 }),
+                            new Table({
+                                rows: [
+                                    new TableRow({
+                                        children: [
+                                            new TableCell({ children: [new Paragraph("Parameter")], width: { size: 4500, type: WidthType.DXA } }),
+                                            new TableCell({ children: [new Paragraph("Value")], width: { size: 4500, type: WidthType.DXA } }),
+                                        ],
+                                    }),
+                                    ...Object.entries(dValues).map(([key, value]) => new TableRow({ children: [new TableCell({ children: [new Paragraph(key)] }), new TableCell({ children: [new Paragraph(value.toFixed(3))] })] })),
+                                    new TableRow({ children: [new TableCell({ children: [new Paragraph("Cu")] }), new TableCell({ children: [new Paragraph(coeffs.cu.toFixed(2)) ] })] }),
+                                    new TableRow({ children: [new TableCell({ children: [new Paragraph("Cc")] }), new TableCell({ children: [new Paragraph(coeffs.cc.toFixed(2)) ] })] }),
+                                    new TableRow({ children: [new TableCell({ children: [new Paragraph("Fineness Modulus")] }), new TableCell({ children: [new Paragraph(stats.fm.toFixed(2)) ] })] }),
+                                    new TableRow({ children: [new TableCell({ children: [new Paragraph("Retained > 75mm (%)")] }), new TableCell({ children: [new Paragraph(stats.retained75mm.toFixed(2)) ] })] }),
+                                    new TableRow({ children: [new TableCell({ children: [new Paragraph("Retained > 45mm (%)")] }), new TableCell({ children: [new Paragraph(stats.retained45mm.toFixed(2)) ] })] }),
+                                ],
+                                width: { size: 9000, type: WidthType.DXA },
+                            }),
+
+                             // --- 5. Add Text Analysis ---
+                            new Paragraph({ text: "Textual Analysis", style: "Well Spaced", heading: docx.HeadingLevel.HEADING_1 }),
+                            new Paragraph(analysisText),
+
+                            // --- 6. Add Charts ---
+                             new Paragraph({ text: "Charts", style: "Well Spaced", heading: docx.HeadingLevel.HEADING_1 }),
+                            ...chartImages.map(img => new Paragraph({ children: [new ImageRun({ data: img.buffer, transformation: { width: img.width, height: img.height } })] })),
+
+                            // --- 7. Add Raw Data Table ---
+                            new Paragraph({ text: "Raw Data", style: "Well Spaced", heading: docx.HeadingLevel.HEADING_1 }),
+                            new Table({
+                                rows: [
+                                    new TableRow({
+                                        children: [
+                                            new TableCell({ children: [new Paragraph("Sieve Size (µm)")] }),
+                                            new TableCell({ children: [new Paragraph("Retained Weight (g)")] }),
+                                            new TableCell({ children: [new Paragraph("Cumulative Retained (%)")] }),
+                                            new TableCell({ children: [new Paragraph("Passing (%)")] }),
+                                        ],
+                                    }),
+                                    ...sieves.map(sieve => new TableRow({
+                                        children: [
+                                            new TableCell({ children: [new Paragraph(sieve.isPan ? 'Pan' : sieve.size.toString())] }),
+                                            new TableCell({ children: [new Paragraph(sieve.weight.toString())] }),
+                                            new TableCell({ children: [new Paragraph(sieve.cumulativeRetainedPercent.toFixed(2))] }),
+                                            new TableCell({ children: [new Paragraph(sieve.passingPercent.toFixed(2))] }),
+                                        ],
+                                    }))
+                                ]
+                            })
+                        ]
+                    }]
+                });
+
+                // --- 8. Save Document ---
+                Packer.toBlob(doc).then(blob => {
+                    saveAs(blob, "Sieve_Analysis_Report.docx");
+                });
+
+                wordModal.style.display = 'none';
             }
 
             function updateCharts() {
@@ -511,42 +688,88 @@
 
             const translations = {
                 en: {
-                    title: "Gradation Analysis of Materials", header_title: "Gradation Analysis", lang_button: "فارسی", export_pdf: "Export PDF", export_excel: "Export Excel",
+                    title: "Gradation Analysis of Materials", header_title: "Gradation Analysis", lang_button: "فارسی", export_word: "Export Word", export_excel: "Export Excel",
                     material_selection_title: "1. Select Material & Standard", crushed_rock: "Crushed Rock", concrete_aggregates: "Concrete Aggregates", soil_clay: "Soil/Clay",
                     astm: "ASTM", iso: "ISO", aashto: "AASHTO", sieve_inputs_title: "2. Enter Sieve Data", sieve_size: "Sieve Size (µm)", retained_weight: "Retained Weight (g)",
                     actions: "Actions", add_sieve: "Add Sieve", delete_button: "Delete", calculate_button: "Calculate", results_title: "3. Analysis Results", cu: "Coefficient of Uniformity (Cu):",
                     cc: "Coefficient of Curvature (Cc):", mean: "Weighted Mean (µm):", std_dev: "Standard Deviation:", analysis_title: "Text Analysis", charts_title: "4. Charts",
-                    alert_no_weight: "Total weight cannot be zero. Please enter retained weights.", alert_no_calculation: "Please perform a calculation first.", generating: "Generating...", pdf_error: "Failed to generate PDF. See console for details.",
-                    pdf_report_title: "Gradation Analysis Report", pdf_material_type: "Material Type", pdf_standard: "Standard", pdf_date: "Date", pdf_sieve_size: "Sieve Size (µm)",
-                    pdf_retained_wt: "Retained Wt. (g)", pdf_cum_retained: "Cum. Retained (%)", pdf_cum_passing: "Cum. Passing (%)", pan: "Pan",
+                    retained_75mm: "Percent Greater than 75mm:", retained_45mm: "Percent Greater than 45mm:",
+                    alert_no_weight: "Total weight cannot be zero. Please enter retained weights.", alert_no_calculation: "Please perform a calculation first.", generating: "Generating...",
+                    word_modal_title: "Word Report Information", word_modal_report_title: "Report Title", word_modal_report_desc: "Description", word_modal_report_date: "Date",
+                    word_modal_cancel: "Cancel", word_modal_confirm: "Generate Report", pan: "Pan",
                     chart_title_passing: "Cumulative Passing Curve", chart_title_retained: "Cumulative Retained Curve", chart_title_histogram: "Histogram (Percent Retained)",
                     chart_xaxis_label: "Sieve Size (µm) - Log Scale", chart_yaxis_passing: "Passing (%)", chart_yaxis_retained: "Retained (%)", chart_yaxis_retained_hist: "Percent Retained (%)",
                     chart_legend_passing: "Cumulative Passing", chart_legend_retained: "Cumulative Retained", chart_legend_retained_hist: "Percent Retained", mean_label: "Mean", std_dev_label: "Std Dev",
                     analysis_err_no_fines: "Cannot determine fines percentage (no 75µm sieve data). Classification not possible.", analysis_err_no_coeffs: "Not enough data for soil classification. D10, D30, and D60 values are required.",
-                    analysis_err_no_split: "Cannot determine sand/gravel split (no 4.75mm/4750µm sieve data). Classification not possible.", analysis_base_gravel: "Material is primarily Gravel-based.",
-                    analysis_base_sand: "Material is primarily Sand-based.", analysis_fines_lt_5: "Fines < 5%.", analysis_fines_gt_12: "Fines > 12%.", analysis_fines_borderline: "Borderline case (5-12% fines).",
-                    analysis_gw: "Classification: GW (Well-graded gravel).", analysis_gp: "Classification: GP (Poorly-graded gravel).", analysis_plasticity_gm_gc: "Further plasticity tests needed to classify as GM (silty gravel) or GC (clayey gravel).",
-                    analysis_dual_symbol_gravel: "Requires dual symbol (e.g., GW-GM, GP-GC).", analysis_sw: "Classification: SW (Well-graded sand).", analysis_sp: "Classification: SP (Poorly-graded sand).",
-                    analysis_plasticity_sm_sc: "Further plasticity tests needed to classify as SM (silty sand) or SC (clayey sand).", analysis_dual_symbol_sand: "Requires dual symbol (e.g., SW-SM, SP-SC).",
+                    analysis_err_no_split: "Cannot determine sand/gravel split (no 4.75mm/4750µm sieve data). Classification not possible.",
+                    analysis_title_uscs: "USCS Soil Classification: ",
+                    analysis_fine_grained: "The material is fine-grained (over 50% passing 75µm sieve). Atterberg limits are needed for full classification.",
+                    analysis_coarse_grained: "The material is coarse-grained ({value}% retained on 75µm sieve). ",
+                    analysis_base_gravel: "The coarse fraction is primarily Gravel ({value}%). ",
+                    analysis_base_sand: "The coarse fraction is primarily Sand ({value}%). ",
+                    analysis_fines_lt_5: "Fines < 5%. ",
+                    analysis_fines_gt_12: "Fines > 12%. ",
+                    analysis_fines_borderline: "Borderline case (5-12% fines). ",
+                    analysis_gw: "Classification: GW (Well-graded gravel).",
+                    analysis_gp: "Classification: GP (Poorly-graded gravel).",
+                    analysis_plasticity_gm_gc: "Further plasticity tests needed to classify as GM (silty gravel) or GC (clayey gravel).",
+                    analysis_dual_symbol_gravel: "Requires dual symbol (e.g., GW-GM, GP-GC).",
+                    analysis_sw: "Classification: SW (Well-graded sand).",
+                    analysis_sp: "Classification: SP (Poorly-graded sand).",
+                    analysis_plasticity_sm_sc: "Further plasticity tests needed to classify as SM (silty sand) or SC (clayey sand).",
+                    analysis_dual_symbol_sand: "Requires dual symbol (e.g., SW-SM, SP-SC).",
+                    analysis_cu_value: "Cu = {value}. ",
+                    analysis_cc_value: "Cc = {value}. ",
+                    analysis_title_concrete: "\nConcrete Aggregate Analysis: ",
+                    analysis_fm_value: "Fineness Modulus (FM) = {value}. ",
+                    analysis_fm_good: "This FM is within the typical range (2.3-3.1) for fine aggregate (ASTM C33).",
+                    analysis_fm_fine: "This indicates the sand is finer than is typical for concrete aggregate.",
+                    analysis_fm_coarse: "This indicates the sand is coarser than is typical for concrete aggregate.",
+                    analysis_fm_na: "Fineness Modulus could not be calculated. Ensure standard sieves are included.",
+                    analysis_title_crusher: "\nCrushed Rock Analysis: ",
+                    analysis_crusher_max_size: "The nominal maximum particle size is approximately {value} mm."
                 },
                 fa: {
-                    title: "آنالیز دانه‌بندی مصالح", header_title: "آنالیز دانه‌بندی", lang_button: "English", export_pdf: "خروجی PDF", export_excel: "خروجی Excel",
+                    title: "آنالیز دانه‌بندی مصالح", header_title: "آنالیز دانه‌بندی", lang_button: "English", export_word: "خروجی Word", export_excel: "خروجی Excel",
                     material_selection_title: "۱. انتخاب نوع مصالح و استاندارد", crushed_rock: "سنگ شکن", concrete_aggregates: "بتن", soil_clay: "رس",
                     astm: "ASTM", iso: "ISO", aashto: "AASHTO", sieve_inputs_title: "۲. ورود اطلاعات سرندها", sieve_size: "اندازه سرند (µm)", retained_weight: "وزن باقی‌مانده (گرم)",
                     actions: "عملیات", add_sieve: "افزودن سرند", delete_button: "حذف", calculate_button: "محاسبه", results_title: "۳. نتایج آنالیز", cu: "ضریب یکنواختی (Cu):",
                     cc: "ضریب انحنا (Cc):", mean: "میانگین وزنی (μm):", std_dev: "انحراف معیار:", analysis_title: "تحلیل متنی", charts_title: "۴. نمودارها",
-                    alert_no_weight: "وزن کل نمی‌تواند صفر باشد. لطفاً وزن‌های باقی‌مانده را وارد کنید.", alert_no_calculation: "لطفاً ابتدا یک محاسبه انجام دهید.", generating: "در حال تولید...", pdf_error: "خطا در تولید PDF. جزئیات را در کنسول ببینید.",
-                    pdf_report_title: "گزارش تحلیل دانه‌بندی", pdf_material_type: "نوع مصالح", pdf_standard: "استاندارد", pdf_date: "تاریخ", pdf_sieve_size: "اندازه سرند (µm)",
-                    pdf_retained_wt: "وزن باقی‌مانده (g)", pdf_cum_retained: "باقی‌مانده تجمعی (%)", pdf_cum_passing: "عبوری تجمعی (%)", pan: "سینی",
+                    retained_75mm: "درصد بزرگتر از ۷۵ میلی متر:", retained_45mm: "درصد بزرگتر از ۴۵ میلی متر:",
+                    alert_no_weight: "وزن کل نمی‌تواند صفر باشد. لطفاً وزن‌های باقی‌مانده را وارد کنید.", alert_no_calculation: "لطفاً ابتدا یک محاسبه انجام دهید.", generating: "در حال تولید...",
+                    word_modal_title: "اطلاعات گزارش Word", word_modal_report_title: "عنوان گزارش", word_modal_report_desc: "توضیحات", word_modal_report_date: "تاریخ",
+                    word_modal_cancel: "انصراف", word_modal_confirm: "تولید گزارش", pan: "سینی",
                     chart_title_passing: "منحنی تجمعی عبوری", chart_title_retained: "منحنی تجمعی باقی‌مانده", chart_title_histogram: "هیستوگرام (درصد باقی‌مانده)",
                     chart_xaxis_label: "اندازه سرند (µm) - مقیاس لگاریتمی", chart_yaxis_passing: "درصد عبوری (%)", chart_yaxis_retained: "درصد باقی‌مانده (%)", chart_yaxis_retained_hist: "درصد باقی‌مانده (%)",
                     chart_legend_passing: "عبوری تجمعی", chart_legend_retained: "باقی‌مانده تجمعی", chart_legend_retained_hist: "درصد باقی‌مانده", mean_label: "میانگین", std_dev_label: "انحراف معیار",
                     analysis_err_no_fines: "امکان تعیین درصد ریزدانه (بدون داده سرند ۷۵µm) وجود ندارد. طبقه‌بندی ممکن نیست.", analysis_err_no_coeffs: "داده‌های کافی برای طبقه‌بندی خاک وجود ندارد. مقادیر D10، D30 و D60 مورد نیاز است.",
-                    analysis_err_no_split: "امکان تفکیک شن و ماسه (بدون داده سرند ۴.۷۵mm/۴۷۵۰µm) وجود ندارد. طبقه‌بندی ممکن نیست.", analysis_base_gravel: "ماده عمدتاً بر پایه شن است.",
-                    analysis_base_sand: "ماده عمدتاً بر پایه ماسه است.", analysis_fines_lt_5: "ریزدانه کمتر از ۵٪.", analysis_fines_gt_12: "ریزدانه بیشتر از ۱۲٪.", analysis_fines_borderline: "حالت مرزی (ریزدانه بین ۵ تا ۱۲٪).",
-                    analysis_gw: "طبقه‌بندی: GW (شن خوب دانه‌بندی شده).", analysis_gp: "طبقه‌بندی: GP (شن بد دانه‌بندی شده).", analysis_plasticity_gm_gc: "برای طبقه‌بندی به عنوان GM (شن لای‌دار) یا GC (شن رس‌دار) به آزمایش‌های خمیری بیشتری نیاز است.",
-                    analysis_dual_symbol_gravel: "نیازمند نماد دوگانه است (مانند GW-GM، GP-GC).", analysis_sw: "طبقه‌بندی: SW (ماسه خوب دانه‌بندی شده).", analysis_sp: "طبقه‌بندی: SP (ماسه بد دانه‌بندی شده).",
-                    analysis_plasticity_sm_sc: "برای طبقه‌بندی به عنوان SM (ماسه لای‌دار) یا SC (ماسه رس‌دار) به آزمایش‌های خمیری بیشتری نیاز است.", analysis_dual_symbol_sand: "نیازمند نماد دوگانه است (مانند SW-SM، SP-SC).",
+                    analysis_err_no_split: "امکان تفکیک شن و ماسه (بدون داده سرند ۴.۷۵mm/۴۷۵۰µm) وجود ندارد. طبقه‌بندی ممکن نیست.",
+                    analysis_title_uscs: "طبقه‌بندی خاک (USCS): ",
+                    analysis_fine_grained: "ماده ریزدانه است (بیش از ۵۰٪ عبوری از سرند ۷۵µm). برای طبقه‌بندی کامل به حدود اتربرگ نیاز است.",
+                    analysis_coarse_grained: "ماده درشت‌دانه است ({value}٪ مانده روی سرند ۷۵µm). ",
+                    analysis_base_gravel: "بخش درشت‌دانه عمدتا شن ({value}٪) است. ",
+                    analysis_base_sand: "بخش درشت‌دانه عمدتا ماسه ({value}٪) است. ",
+                    analysis_fines_lt_5: "ریزدانه کمتر از ۵٪. ",
+                    analysis_fines_gt_12: "ریزدانه بیشتر از ۱۲٪. ",
+                    analysis_fines_borderline: "حالت مرزی (ریزدانه بین ۵ تا ۱۲٪). ",
+                    analysis_gw: "طبقه‌بندی: GW (شن خوب دانه‌بندی شده).",
+                    analysis_gp: "طبقه‌بندی: GP (شن بد دانه‌بندی شده).",
+                    analysis_plasticity_gm_gc: "برای طبقه‌بندی به عنوان GM (شن لای‌دار) یا GC (شن رس‌دار) به آزمایش‌های خمیری بیشتری نیاز است.",
+                    analysis_dual_symbol_gravel: "نیازمند نماد دوگانه است (مانند GW-GM، GP-GC).",
+                    analysis_sw: "طبقه‌بندی: SW (ماسه خوب دانه‌بندی شده).",
+                    analysis_sp: "طبقه‌بندی: SP (ماسه بد دانه‌بندی شده).",
+                    analysis_plasticity_sm_sc: "برای طبقه‌بندی به عنوان SM (ماسه لای‌دار) یا SC (ماسه رس‌دار) به آزمایش‌های خمیری بیشتری نیاز است.",
+                    analysis_dual_symbol_sand: "نیازمند نماد دوگانه است (مانند SW-SM، SP-SC).",
+                    analysis_cu_value: "Cu = {value}. ",
+                    analysis_cc_value: "Cc = {value}. ",
+                    analysis_title_concrete: "\nتحلیل سنگدانه بتن: ",
+                    analysis_fm_value: "مدول نرمی (FM) = {value}. ",
+                    analysis_fm_good: "این مدول نرمی در محدوده استاندارد (۲.۳-۳.۱) برای سنگدانه ریز (ASTM C33) قرار دارد.",
+                    analysis_fm_fine: "این نشان می‌دهد که ماسه ریزتر از حد معمول برای سنگدانه بتن است.",
+                    analysis_fm_coarse: "این نشان می‌دهد که ماسه درشت‌تر از حد معمول برای سنگدانه بتن است.",
+                    analysis_fm_na: "مدول نرمی قابل محاسبه نیست. از وجود سرندهای استاندارد اطمینان حاصل کنید.",
+                    analysis_title_crusher: "\nتحلیل سنگ شکن: ",
+                    analysis_crusher_max_size: "حداکثر اندازه اسمی ذرات تقریباً {value} میلی‌متر است."
                 }
             };
 
