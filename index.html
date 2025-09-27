@@ -207,7 +207,7 @@
                 <table id="sieve-table">
                     <thead>
                         <tr>
-                            <th data-lang-key="sieve_size">اندازه سرند (mm)</th>
+                            <th data-lang-key="sieve_size">اندازه سرند (µm)</th>
                             <th data-lang-key="retained_weight">وزن باقی‌مانده (گرم)</th>
                             <th data-lang-key="actions">عملیات</th>
                         </tr>
@@ -220,7 +220,7 @@
                 <button id="calculate" data-lang-key="calculate_button">محاسبه</button>
             </section>
 
-            <section id="results">
+            <section id="results" style="display: none;">
                 <h2 data-lang-key="results_title">۳. نتایج آنالیز</h2>
                 <div id="results-output">
                     <p><strong>D10:</strong> <span id="d10-value">-</span></p>
@@ -230,18 +230,24 @@
                     <p><strong>D80:</strong> <span id="d80-value">-</span></p>
                     <p><strong data-lang-key="cu">ضریب یکنواختی (Cu):</strong> <span id="cu-value">-</span></p>
                     <p><strong data-lang-key="cc">ضریب انحنا (Cc):</strong> <span id="cc-value">-</span></p>
+                    <p><strong data-lang-key="mean">میانگین وزنی (μm):</strong> <span id="mean-value">-</span></p>
+                    <p><strong data-lang-key="std_dev">انحراف معیار:</strong> <span id="std-dev-value">-</span></p>
+                </div>
+                <div id="text-analysis-container" style="margin-top: 20px;">
+                    <h3 data-lang-key="analysis_title">تحلیل متنی</h3>
+                    <p id="text-analysis-output">-</p>
                 </div>
             </section>
 
-            <section id="charts">
+            <section id="charts" style="display: none;">
                 <h2 data-lang-key="charts_title">۴. نمودارها</h2>
-                <div class="chart-container">
+                <div class="chart-container" style="height: 400px; margin-bottom: 20px;">
                     <canvas id="passing-curve-chart"></canvas>
                 </div>
-                <div class="chart-container">
+                <div class="chart-container" style="height: 400px; margin-bottom: 20px;">
                     <canvas id="retained-curve-chart"></canvas>
                 </div>
-                <div class="chart-container">
+                <div class="chart-container" style="height: 400px;">
                     <canvas id="histogram-chart"></canvas>
                 </div>
             </section>
@@ -252,6 +258,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/1.4.0/chartjs-plugin-annotation.min.js"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -272,11 +279,11 @@
             Chart.defaults.plugins.legend.labels.boxWidth = 20;
             Chart.defaults.plugins.legend.labels.padding = 20;
 
-            // Predefined sieve sets based on standards
+            // Predefined sieve sets based on standards (in microns)
             const SIEVE_STANDARDS = {
-                astm: [75, 50, 37.5, 25, 19, 12.5, 9.5, 4.75, 2.36, 1.18, 0.6, 0.3, 0.15, 0.075],
-                iso: [80, 63, 50, 40, 31.5, 25, 20, 16, 12.5, 10, 8, 6.3, 5, 4, 2.8, 2, 1.4, 1, 0.5, 0.25, 0.125, 0.063],
-                aashto: [75, 63, 50, 37.5, 25.0, 19.0, 12.5, 9.5, 4.75, 2.00, 0.425, 0.180, 0.075]
+                astm: [75000, 50000, 37500, 25000, 19000, 12500, 9500, 4750, 2360, 1180, 600, 300, 150, 75],
+                iso: [80000, 63000, 50000, 40000, 31500, 25000, 20000, 16000, 12500, 10000, 8000, 6300, 5000, 4000, 2800, 2000, 1400, 1000, 500, 250, 125, 63],
+                aashto: [75000, 63000, 50000, 37500, 25000, 19000, 12500, 9500, 4750, 2000, 425, 180, 75]
             };
 
             const addRowBtn = document.getElementById('add-row');
@@ -392,20 +399,129 @@
                     document.getElementById('cc-value').textContent = 'N/A';
                 }
 
+                // --- New Statistical Calculations ---
+                let weightedMeanSum = 0;
+                let particleData = [];
+                const nonPanSieves = sieves.filter(s => !s.isPan);
+
+                for (let i = 0; i < nonPanSieves.length; i++) {
+                    const upperSize = (i === 0) ? nonPanSieves[i].size * 2 : nonPanSieves[i-1].size;
+                    const lowerSize = nonPanSieves[i].size;
+                    const meanSize = Math.sqrt(upperSize * lowerSize);
+
+                    const weight = nonPanSieves[i].weight;
+                    if(weight > 0) {
+                        particleData.push({ meanSize, weight });
+                        weightedMeanSum += meanSize * weight;
+                    }
+                }
+
+                const panWeight = sieves.find(s => s.isPan)?.weight || 0;
+                if (panWeight > 0 && nonPanSieves.length > 0) {
+                    const smallestSieveSize = nonPanSieves[nonPanSieves.length - 1].size;
+                    const meanSize = smallestSieveSize / 2; // Approximation for pan
+                    particleData.push({ meanSize, weight: panWeight });
+                    weightedMeanSum += meanSize * panWeight;
+                }
+
+                const weightedMean = totalWeight > 0 ? weightedMeanSum / totalWeight : 0;
+
+                let varianceSum = 0;
+                if (totalWeight > 0) {
+                    particleData.forEach(p => {
+                        varianceSum += Math.pow(p.meanSize - weightedMean, 2) * p.weight;
+                    });
+                }
+                const variance = totalWeight > 0 ? varianceSum / totalWeight : 0;
+                const standardDeviation = Math.sqrt(variance);
+
+                document.getElementById('mean-value').textContent = weightedMean.toFixed(3);
+                document.getElementById('std-dev-value').textContent = standardDeviation.toFixed(2);
+                // --- End of New Statistical Calculations ---
+
                 const dValues = {
                     d10: d10, d30: d30, d50: d50, d60: d60, d80: d80
                 };
                 const cuVal = (d10 > 0) ? (d60 / d10) : 0;
                 const ccVal = (d10 > 0 && d60 > 0) ? ((d30 * d30) / (d10 * d60)) : 0;
                 const coeffs = { cu: cuVal, cc: ccVal };
+                const analysisText = generateTextAnalysis(coeffs.cu, coeffs.cc, sieves, totalWeight);
+
+                document.getElementById('text-analysis-output').textContent = analysisText;
 
                 lastCalculationData = {
                     sieves: sieves,
                     dValues: dValues,
-                    coeffs: coeffs
+                    coeffs: coeffs,
+                    analysisText: analysisText,
+                    stats: {
+                        mean: weightedMean,
+                        stdDev: standardDeviation
+                    }
                 };
 
-                updateCharts(sieves);
+                // Show results and charts
+                document.getElementById('results').style.display = 'block';
+                document.getElementById('charts').style.display = 'block';
+
+                updateCharts(sieves, lastCalculationData.stats.mean, lastCalculationData.stats.stdDev);
+            }
+
+            function generateTextAnalysis(cu, cc, sieves, totalWeight) {
+                const passing75micron = sieves.find(s => s.size === 75)?.passingPercent;
+                // If passing at 75 is not available (e.g., no 75 micron sieve), we can't determine fines percent accurately.
+                if (passing75micron === undefined) {
+                     return "Cannot determine fines percentage (no 75µm sieve data). Classification not possible.";
+                }
+                const finesPercent = passing75micron;
+
+                let analysis = "";
+
+                if (cu === 0 || cc === 0) {
+                    return "Not enough data for soil classification. D10, D30, and D60 values are required.";
+                }
+
+                // Basic USCS classification for Sands (S) and Gravels (G)
+                const passing4750micron = sieves.find(s => s.size === 4750)?.passingPercent;
+                if (passing4750micron === undefined) {
+                    return "Cannot determine sand/gravel split (no 4.75mm/4750µm sieve data). Classification not possible.";
+                }
+
+                const coarsePercent = 100 - finesPercent;
+                const gravelPercent = 100 - passing4750micron;
+                const sandPercent = coarsePercent - gravelPercent;
+
+                if (gravelPercent > sandPercent) { // Coarse fraction is mostly gravel
+                    analysis += "Material is primarily Gravel-based. ";
+                    if (finesPercent < 5) {
+                        analysis += "Fines < 5%. ";
+                        if (cu >= 4 && cc >= 1 && cc <= 3) {
+                            analysis += "Classification: GW (Well-graded gravel).";
+                        } else {
+                            analysis += "Classification: GP (Poorly-graded gravel).";
+                        }
+                    } else if (finesPercent > 12) {
+                        analysis += "Fines > 12%. Further plasticity tests needed to classify as GM (silty gravel) or GC (clayey gravel).";
+                    } else { // 5% <= Fines <= 12%
+                        analysis += "Borderline case (5-12% fines). Requires dual symbol (e.g., GW-GM, GP-GC).";
+                    }
+                } else { // Coarse fraction is mostly sand
+                    analysis += "Material is primarily Sand-based. ";
+                     if (finesPercent < 5) {
+                        analysis += "Fines < 5%. ";
+                        if (cu >= 6 && cc >= 1 && cc <= 3) {
+                            analysis += "Classification: SW (Well-graded sand).";
+                        } else {
+                            analysis += "Classification: SP (Poorly-graded sand).";
+                        }
+                    } else if (finesPercent > 12) {
+                        analysis += "Fines > 12%. Further plasticity tests needed to classify as SM (silty sand) or SC (clayey sand).";
+                    } else { // 5% <= Fines <= 12%
+                        analysis += "Borderline case (5-12% fines). Requires dual symbol (e.g., SW-SM, SP-SC).";
+                    }
+                }
+
+                return analysis;
             }
 
             function exportToExcel() {
@@ -414,10 +530,10 @@
                     return;
                 }
 
-                const { sieves, dValues, coeffs } = lastCalculationData;
+                const { sieves, dValues, coeffs, stats, analysisText } = lastCalculationData;
 
                 const resultsData = sieves.map(s => ({
-                    'Sieve Size (mm)': s.isPan ? 'Pan' : s.size,
+                    'Sieve Size (µm)': s.isPan ? 'Pan' : s.size,
                     'Retained Weight (g)': s.weight,
                     'Cumulative Retained (%)': s.cumulativeRetainedPercent.toFixed(2),
                     'Passing (%)': s.passingPercent.toFixed(2)
@@ -434,6 +550,11 @@
                 XLSX.utils.sheet_add_aoa(ws, [['D80', dValues.d80.toFixed(3)]], {origin: -1});
                 XLSX.utils.sheet_add_aoa(ws, [['Cu', coeffs.cu ? coeffs.cu.toFixed(2) : 'N/A']], {origin: -1});
                 XLSX.utils.sheet_add_aoa(ws, [['Cc', coeffs.cc ? coeffs.cc.toFixed(2) : 'N/A']], {origin: -1});
+                XLSX.utils.sheet_add_aoa(ws, [['Weighted Mean (µm)', stats.mean.toFixed(3)]], {origin: -1});
+                XLSX.utils.sheet_add_aoa(ws, [['Standard Deviation', stats.stdDev.toFixed(2)]], {origin: -1});
+                XLSX.utils.sheet_add_aoa(ws, [[]], {origin: -1}); // Spacer
+                XLSX.utils.sheet_add_aoa(ws, [['Text Analysis']], {origin: -1});
+                XLSX.utils.sheet_add_aoa(ws, [[analysisText]], {origin: -1});
 
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, 'Gradation Analysis');
@@ -470,7 +591,7 @@
                     doc.text(`Sieve Standard: ${standard}`, margin, yPos + 5);
                     yPos += 15;
 
-                    const resultsCanvas = await html2canvas(document.getElementById('results-output'));
+                    const resultsCanvas = await html2canvas(document.getElementById('results'));
                     const resultsImgData = resultsCanvas.toDataURL('image/png');
                     const resultsImgProps = doc.getImageProperties(resultsImgData);
                     const resultsImgHeight = (resultsImgProps.height * (doc.internal.pageSize.getWidth() - 2 * margin)) / resultsImgProps.width;
@@ -503,15 +624,12 @@
                 }
             }
 
-            function updateCharts(sieveData) {
+            function updateCharts(sieveData, mean, stdDev) {
                 const labels = sieveData.filter(s => !s.isPan).map(s => s.size).reverse();
                 const passingPercent = sieveData.filter(s => !s.isPan).map(s => s.passingPercent).reverse();
                 const cumulativeRetainedPercent = sieveData.filter(s => !s.isPan).map(s => s.cumulativeRetainedPercent).reverse();
-                const retainedPercent = sieveData.map((s, i) => {
-                    if (i === 0) return 100 - s.passingPercent;
-                    const prevPassing = sieveData[i - 1].passingPercent;
-                    return prevPassing - s.passingPercent;
-                }).filter((_, i) => !sieveData[i].isPan).reverse();
+                const totalWeight = sieveData.reduce((sum, s) => sum + s.weight, 0);
+                const retainedPercent = sieveData.filter(s => !s.isPan).map(s => (s.weight / totalWeight) * 100).reverse();
 
 
                 const chartOptions = (title, xAxisType = 'logarithmic') => ({
@@ -534,7 +652,7 @@
                             reverse: xAxisType === 'logarithmic',
                             title: {
                                 display: true,
-                                text: 'Sieve Size (mm) - Log Scale',
+                                text: 'Sieve Size (µm) - Log Scale',
                                 color: 'white'
                             },
                             ticks: {
@@ -596,16 +714,61 @@
                 });
 
                 // Histogram Chart
-                const histogramOptions = chartOptions('Histogram (Percent Retained on Each Sieve)', 'category');
-                histogramOptions.scales.x.reverse = false; // Category axis shouldn't be reversed
-                histogramOptions.scales.x.title.text = 'Sieve Size (mm)';
+                const histogramOptions = {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: { display: true, text: 'Histogram (Percent Retained)', color: 'white', font: { size: 18 } },
+                        legend: { display: false },
+                        annotation: {
+                            annotations: {
+                                meanLine: {
+                                    type: 'line',
+                                    scaleID: 'x',
+                                    value: mean,
+                                    borderColor: '#e74c3c',
+                                    borderWidth: 3,
+                                    label: {
+                                        content: `Mean: ${mean.toFixed(0)} µm`,
+                                        enabled: true,
+                                        position: 'top',
+                                        backgroundColor: 'rgba(231, 76, 60, 0.8)'
+                                    }
+                                },
+                                stdDevLabel: {
+                                    type: 'label',
+                                    xValue: mean,
+                                    yValue: Math.max(...retainedPercent) * 0.9,
+                                    backgroundColor: 'rgba(44, 62, 80, 0.7)',
+                                    content: `Std Dev: ${stdDev.toFixed(0)}`,
+                                    font: { size: 12 },
+                                    padding: 6,
+                                    borderRadius: 6
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'logarithmic',
+                            reverse: true,
+                            title: { display: true, text: 'Sieve Size (µm) - Log Scale', color: 'white' },
+                            ticks: { color: 'white' }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Percent Retained (%)', color: 'white' },
+                            ticks: { color: 'white' }
+                        }
+                    }
+                };
+
                 histogramChart = new Chart(document.getElementById('histogram-chart'), {
                     type: 'bar',
                     data: {
-                        labels: labels,
                         datasets: [{
                             label: 'Percent Retained',
-                            data: retainedPercent,
+                            data: labels.map((label, i) => ({ x: label, y: retainedPercent[i] })),
                             backgroundColor: '#f1c40f',
                             borderColor: '#f39c12',
                             borderWidth: 1
@@ -664,7 +827,7 @@
                     iso: "ISO",
                     aashto: "AASHTO",
                     sieve_inputs_title: "2. Enter Sieve Data",
-                    sieve_size: "Sieve Size (mm)",
+                    sieve_size: "Sieve Size (µm)",
                     retained_weight: "Retained Weight (g)",
                     actions: "Actions",
                     add_sieve: "Add Sieve",
@@ -673,6 +836,9 @@
                     results_title: "3. Analysis Results",
                     cu: "Coefficient of Uniformity (Cu):",
                     cc: "Coefficient of Curvature (Cc):",
+                    mean: "Weighted Mean (µm):",
+                    std_dev: "Standard Deviation:",
+                    analysis_title: "Text Analysis",
                     charts_title: "4. Charts",
                 },
                 fa: {
@@ -689,7 +855,7 @@
                     iso: "ISO",
                     aashto: "AASHTO",
                     sieve_inputs_title: "۲. ورود اطلاعات سرندها",
-                    sieve_size: "اندازه سرند (mm)",
+                    sieve_size: "اندازه سرند (µm)",
                     retained_weight: "وزن باقی‌مانده (گرم)",
                     actions: "عملیات",
                     add_sieve: "افزودن سرند",
@@ -698,6 +864,9 @@
                     results_title: "۳. نتایج آنالیز",
                     cu: "ضریب یکنواختی (Cu):",
                     cc: "ضریب انحنا (Cc):",
+                    mean: "میانگین وزنی (μm):",
+                    std_dev: "انحراف معیار:",
+                    analysis_title: "تحلیل متنی",
                     charts_title: "۴. نمودارها",
                 }
             };
