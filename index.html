@@ -57,7 +57,7 @@
             <h1 data-lang-key="header_title">آنالیز دانه‌بندی مصالح</h1>
             <div class="toolbar">
                 <button id="lang-toggle" data-lang-key="lang_button">English</button>
-                <button id="export-word" data-lang-key="export_word">خروجی Word</button>
+                <button id="export-pdf" data-lang-key="export_pdf">خروجی PDF</button>
                 <button id="export-excel" data-lang-key="export_excel">خروجی Excel</button>
             </div>
         </header>
@@ -118,53 +118,72 @@
             </section>
         </main>
     </div>
-    <div id="word-export-modal" class="modal-overlay" style="display: none;">
+    <div id="pdf-export-modal" class="modal-overlay" style="display: none;">
         <div class="modal-content">
-            <h3 data-lang-key="word_modal_title">اطلاعات گزارش Word</h3>
+            <h3 data-lang-key="pdf_modal_title">اطلاعات گزارش PDF</h3>
             <div>
-                <label for="report-title" data-lang-key="word_modal_report_title">عنوان گزارش</label>
+                <label for="report-title" data-lang-key="pdf_modal_report_title">عنوان گزارش</label>
                 <input type="text" id="report-title" placeholder="مثال: نتایج آنالیز سرندی سنگ شکن شماره ۲">
             </div>
             <div>
-                <label for="report-desc" data-lang-key="word_modal_report_desc">توضیحات</label>
+                <label for="report-desc" data-lang-key="pdf_modal_report_desc">توضیحات</label>
                 <textarea id="report-desc" rows="4" placeholder="مثال: نمونه مربوط به ده روز دوم خرداد ماه ۱۴۰۲ می‌باشد."></textarea>
             </div>
             <div>
-                <label for="report-date" data-lang-key="word_modal_report_date">تاریخ</label>
+                <label for="report-date" data-lang-key="pdf_modal_report_date">تاریخ</label>
                 <input type="text" id="report-date">
             </div>
             <div class="modal-actions">
-                <button id="cancel-word-export" data-lang-key="word_modal_cancel">انصراف</button>
-                <button id="confirm-word-export" data-lang-key="word_modal_confirm">تولید گزارش</button>
+                <button id="cancel-pdf-export" data-lang-key="pdf_modal_cancel">انصراف</button>
+                <button id="confirm-pdf-export" data-lang-key="pdf_modal_confirm">تولید گزارش</button>
             </div>
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/docx@9.5.1/dist/index.iife.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/1.4.0/chartjs-plugin-annotation.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <script>
-        // This is a placeholder for a Base64 encoded font. In a real scenario, this would be a very long string.
-        const VAZIRMATN_FONT_BASE64 = "PLACEHOLDER_FOR_VERY_LONG_BASE64_STRING";
+        let VAZIRMATN_FONT_BASE64 = "";
+
+        async function loadFontAsBase64(fontUrl) {
+            try {
+                const response = await fetch(fontUrl);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const blob = await response.blob();
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+            } catch (e) {
+                console.error("Error loading font:", e);
+                return null;
+            }
+        }
     </script>
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', async function () {
+            VAZIRMATN_FONT_BASE64 = await loadFontAsBase64('Vazirmatn-Regular.ttf');
+
             let passingChart, retainedChart, histogramChart;
             let lastCalculationData = null;
 
-            const exportWordBtn = document.getElementById('export-word');
+            const exportPdfBtn = document.getElementById('export-pdf');
             const exportExcelBtn = document.getElementById('export-excel');
             const langToggleBtn = document.getElementById('lang-toggle');
-            const wordModal = document.getElementById('word-export-modal');
-            const cancelWordExportBtn = document.getElementById('cancel-word-export');
-            const confirmWordExportBtn = document.getElementById('confirm-word-export');
+            const pdfModal = document.getElementById('pdf-export-modal');
+            const cancelPdfExportBtn = document.getElementById('cancel-pdf-export');
+            const confirmPdfExportBtn = document.getElementById('confirm-pdf-export');
             const reportDateInput = document.getElementById('report-date');
 
-            exportWordBtn.addEventListener('click', showWordModal);
-            cancelWordExportBtn.addEventListener('click', () => wordModal.style.display = 'none');
-            confirmWordExportBtn.addEventListener('click', exportToWord);
+            exportPdfBtn.addEventListener('click', showPdfModal);
+            cancelPdfExportBtn.addEventListener('click', () => pdfModal.style.display = 'none');
+            confirmPdfExportBtn.addEventListener('click', exportToPdf);
             exportExcelBtn.addEventListener('click', exportToExcel);
             langToggleBtn.addEventListener('click', toggleLanguage);
 
@@ -519,136 +538,149 @@
                 }
             }
 
-            function showWordModal() {
+            function showPdfModal() {
                 if (!lastCalculationData) {
                     alert(translations[currentLang]['alert_no_calculation']);
                     return;
                 }
                 reportDateInput.value = new Date().toLocaleDateString(currentLang === 'fa' ? 'fa-IR' : 'en-US');
-                wordModal.style.display = 'flex';
+                pdfModal.style.display = 'flex';
             }
 
-            async function exportToWord() {
+            async function exportToPdf() {
                 if (!lastCalculationData) {
                     alert(translations[currentLang]['alert_no_calculation']);
                     return;
                 }
-
-                const { Document, Packer, Paragraph, TextRun, ImageRun, Table, TableCell, TableRow, WidthType, HeadingLevel, AlignmentType, BorderStyle } = docx;
-                const isFa = currentLang === 'fa';
-
-                // --- 1. Get Custom User Input & Data ---
-                const reportTitle = document.getElementById('report-title').value || (isFa ? "گزارش تحلیل دانه‌بندی" : "Gradation Analysis Report");
-                const reportDesc = document.getElementById('report-desc').value;
-                const reportDate = document.getElementById('report-date').value;
-                const { sieves, dValues, coeffs, stats, analysisText } = lastCalculationData;
-
-                // --- 2. Generate Chart Images ---
-                const chartConfigs = [
-                    { id: 'passing-curve-chart', title: translations[currentLang]['chart_title_passing'] },
-                    { id: 'retained-curve-chart', title: translations[currentLang]['chart_title_retained'] },
-                    { id: 'histogram-chart', title: translations[currentLang]['chart_title_histogram'] }
-                ];
-                const chartImages = [];
-                for (const config of chartConfigs) {
-                    const canvas = await html2canvas(document.getElementById(config.id), { backgroundColor: '#34495e' });
-                    chartImages.push({
-                        buffer: canvas.toDataURL('image/png'),
-                        title: config.title
-                    });
+                if (!VAZIRMATN_FONT_BASE64) {
+                    alert("Font file has not been loaded yet. Please wait a moment and try again.");
+                    return;
                 }
 
-                // --- 3. Define Styles ---
-                const doc = new Document({
-                    creator: "Sieve Analysis App",
-                    title: reportTitle,
-                    description: reportDesc,
-                    styles: {
-                        default: {
-                            heading1: { run: { size: 44, bold: true, color: "2E74B5" }, paragraph: { spacing: { before: 240, after: 120 } } },
-                            heading2: { run: { size: 28, bold: true, color: "2E74B5" }, paragraph: { spacing: { before: 240, after: 120 } } },
-                        },
-                    },
-                    features: {
-                        updateFields: true,
-                    },
-                    settings: {
-                        compatabilityMode: docx.CompatibilityMode.WORD_2010,
-                        view: new docx.View({ rtl: isFa }),
-                    },
-                    sections: [{
-                        children: [
-                            new Paragraph({ text: reportTitle, heading: HeadingLevel.TITLE, alignment: AlignmentType.CENTER }),
-                            new Paragraph({ text: reportDate, alignment: AlignmentType.CENTER, style: "IntenseQuote" }),
-                            new Paragraph({ text: reportDesc, spacing: { after: 300 } }),
+                const { jsPDF } = window.jspdf;
+                const isFa = currentLang === 'fa';
 
-                            // --- Summary Table ---
-                            new Paragraph({ text: translations[currentLang]['results_title'], heading: HeadingLevel.HEADING_1 }),
-                            new Table({
-                                width: { size: 100, type: WidthType.PERCENTAGE },
-                                rows: [
-                                    new TableRow({
-                                        children: [
-                                            new TableCell({ children: [new Paragraph({text: "Parameter", children: [new TextRun({bold: true})]})]}),
-                                            new TableCell({ children: [new Paragraph({text: "Value", children: [new TextRun({bold: true})]})]}),
-                                        ],
-                                    }),
-                                    ...Object.entries(dValues).map(([key, value]) => new TableRow({ children: [new TableCell({ children: [new Paragraph(key)] }), new TableCell({ children: [new Paragraph(value.toFixed(3))] })] })),
-                                    new TableRow({ children: [new TableCell({ children: [new Paragraph("Cu")] }), new TableCell({ children: [new Paragraph(coeffs.cu.toFixed(2))] })] }),
-                                    new TableRow({ children: [new TableCell({ children: [new Paragraph("Cc")] }), new TableCell({ children: [new Paragraph(coeffs.cc.toFixed(2))] })] }),
-                                    new TableRow({ children: [new TableCell({ children: [new Paragraph("Fineness Modulus")] }), new TableCell({ children: [new Paragraph(stats.fm.toFixed(2))] })] }),
-                                    new TableRow({ children: [new TableCell({ children: [new Paragraph("Retained > 75mm (%)")] }), new TableCell({ children: [new Paragraph(stats.retained75mm.toFixed(2))] })] }),
-                                    new TableRow({ children: [new TableCell({ children: [new Paragraph("Retained > 45mm (%)")] }), new TableCell({ children: [new Paragraph(stats.retained45mm.toFixed(2))] })] }),
-                                ],
-                            }),
+                const originalButtonText = confirmPdfExportBtn.textContent;
+                confirmPdfExportBtn.textContent = translations[currentLang]['generating'];
+                confirmPdfExportBtn.disabled = true;
 
-                            // --- Text Analysis ---
-                            new Paragraph({ text: translations[currentLang]['analysis_title'], heading: HeadingLevel.HEADING_1 }),
-                            new Paragraph({ text: analysisText, spacing: { after: 300 } }),
+                try {
+                    const doc = new jsPDF();
 
-                            // --- Charts ---
-                            new Paragraph({ text: translations[currentLang]['charts_title'], heading: HeadingLevel.HEADING_1, pageBreakBefore: true }),
-                            ...chartImages.flatMap(img => [
-                                new Paragraph({
-                                    children: [new ImageRun({ data: img.buffer, transformation: { width: 600, height: 300 } })],
-                                    alignment: AlignmentType.CENTER
-                                }),
-                                new Paragraph({ text: img.title, alignment: AlignmentType.CENTER, style: "Caption" })
-                            ]),
+                    // --- 1. Add Font for Persian support ---
+                    doc.addFileToVFS("Vazirmatn-Regular.ttf", VAZIRMATN_FONT_BASE64);
+                    doc.addFont("Vazirmatn-Regular.ttf", "Vazirmatn", "normal");
+                    doc.setFont("Vazirmatn");
 
-                            // --- Raw Data Table ---
-                            new Paragraph({ text: "Raw Data", heading: HeadingLevel.HEADING_1, pageBreakBefore: true }),
-                            new Table({
-                                width: { size: 100, type: WidthType.PERCENTAGE },
-                                rows: [
-                                    new TableRow({
-                                        children: [
-                                            new TableCell({ children: [new Paragraph(translations[currentLang]['sieve_size'])] }),
-                                            new TableCell({ children: [new Paragraph(translations[currentLang]['retained_weight'])] }),
-                                            new TableCell({ children: [new Paragraph('Cumulative Retained (%)')] }),
-                                            new TableCell({ children: [new Paragraph('Passing (%)')] }),
-                                        ],
-                                    }),
-                                    ...sieves.map(sieve => new TableRow({
-                                        children: [
-                                            new TableCell({ children: [new Paragraph(sieve.isPan ? translations[currentLang]['pan'] : sieve.size.toString())] }),
-                                            new TableCell({ children: [new Paragraph(sieve.weight.toString())] }),
-                                            new TableCell({ children: [new Paragraph(sieve.cumulativeRetainedPercent.toFixed(2))] }),
-                                            new TableCell({ children: [new Paragraph(sieve.passingPercent.toFixed(2))] }),
-                                        ],
-                                    }))
-                                ]
-                            })
-                        ]
-                    }]
-                });
+                    // --- 2. Get Custom User Input & Data ---
+                    const reportTitle = document.getElementById('report-title').value || (isFa ? "گزارش تحلیل دانه‌بندی" : "Gradation Analysis Report");
+                    const reportDesc = document.getElementById('report-desc').value;
+                    const reportDate = document.getElementById('report-date').value;
+                    const { sieves, dValues, coeffs, stats, analysisText } = lastCalculationData;
 
-                // --- 4. Save Document ---
-                Packer.toBlob(doc).then(blob => {
-                    saveAs(blob, "Sieve_Analysis_Report.docx");
-                });
+                    // --- 3. Generate Chart Images ---
+                    const chartConfigs = [
+                        { id: 'passing-curve-chart', title: translations[currentLang]['chart_title_passing'] },
+                        { id: 'retained-curve-chart', title: translations[currentLang]['chart_title_retained'] },
+                        { id: 'histogram-chart', title: translations[currentLang]['chart_title_histogram'] }
+                    ];
+                    const chartImages = [];
+                    for (const config of chartConfigs) {
+                        const canvas = await html2canvas(document.getElementById(config.id), { backgroundColor: '#34495e' });
+                        chartImages.push(canvas.toDataURL('image/png'));
+                    }
 
-                wordModal.style.display = 'none';
+                    // --- 4. Build PDF Document ---
+                    const processText = (text) => isFa ? doc.splitTextToSize(text, 180).reverse().join('\n') : doc.splitTextToSize(text, 180);
+
+                    doc.setFontSize(22);
+                    doc.text(reportTitle, 105, 20, { align: 'center' });
+
+                    doc.setFontSize(12);
+                    doc.text(reportDate, 105, 30, { align: 'center' });
+
+                    if (reportDesc) {
+                        doc.setFontSize(12);
+                        const descLines = doc.splitTextToSize(reportDesc, 180);
+                        doc.text(descLines, 15, 40);
+                    }
+
+                    let yPos = reportDesc ? 55 : 45;
+
+                    // --- Summary Table ---
+                    doc.setFontSize(16);
+                    doc.text(translations[currentLang]['results_title'], 15, yPos);
+                    yPos += 5;
+                    const summaryBody = [
+                        ...Object.entries(dValues).map(([key, value]) => [key, value.toFixed(3)]),
+                        ['Cu', coeffs.cu.toFixed(2)],
+                        ['Cc', coeffs.cc.toFixed(2)],
+                        ['Fineness Modulus', stats.fm.toFixed(2)],
+                        ['Retained > 75mm (%)', stats.retained75mm.toFixed(2)],
+                        ['Retained > 45mm (%)', stats.retained45mm.toFixed(2)],
+                    ];
+                    doc.autoTable({
+                        startY: yPos,
+                        head: [['Parameter', 'Value']],
+                        body: summaryBody,
+                        theme: 'grid',
+                        headStyles: { fillColor: [44, 62, 80] },
+                        styles: { font: 'Vazirmatn' }
+                    });
+                    yPos = doc.autoTable.previous.finalY + 15;
+
+                    // --- Text Analysis ---
+                    doc.setFontSize(16);
+                    doc.text(translations[currentLang]['analysis_title'], 15, yPos);
+                    yPos += 8;
+                    doc.setFontSize(11);
+                    const analysisLines = doc.splitTextToSize(analysisText, 180);
+                    doc.text(analysisLines, 15, yPos, { align: isFa ? 'right' : 'left' });
+                    yPos += analysisLines.length * 5 + 10;
+
+                    // --- Charts ---
+                    doc.addPage();
+                    doc.setFontSize(16);
+                    doc.text(translations[currentLang]['charts_title'], 105, 15, { align: 'center' });
+                    doc.addImage(chartImages[0], 'PNG', 15, 25, 180, 80);
+                    doc.addImage(chartImages[1], 'PNG', 15, 115, 180, 80);
+                    doc.addImage(chartImages[2], 'PNG', 15, 205, 180, 80);
+
+                    // --- Raw Data Table ---
+                    doc.addPage();
+                    doc.setFontSize(16);
+                    doc.text("Raw Data", 105, 15, { align: 'center' });
+                    const rawDataBody = sieves.map(s => [
+                        s.isPan ? translations[currentLang]['pan'] : s.size.toString(),
+                        s.weight.toString(),
+                        s.cumulativeRetainedPercent.toFixed(2),
+                        s.passingPercent.toFixed(2)
+                    ]);
+                    doc.autoTable({
+                        startY: 25,
+                        head: [[
+                            translations[currentLang]['sieve_size'],
+                            translations[currentLang]['retained_weight'],
+                            'Cumulative Retained (%)',
+                            'Passing (%)'
+                        ]],
+                        body: rawDataBody,
+                        theme: 'grid',
+                        headStyles: { fillColor: [44, 62, 80] },
+                        styles: { font: 'Vazirmatn' }
+                    });
+
+                    // --- 5. Save Document ---
+                    doc.save("Sieve_Analysis_Report.pdf");
+
+                } catch (e) {
+                    console.error("Error generating PDF:", e);
+                    alert("An error occurred while generating the PDF.");
+                } finally {
+                    confirmPdfExportBtn.textContent = originalButtonText;
+                    confirmPdfExportBtn.disabled = false;
+                    pdfModal.style.display = 'none';
+                }
             }
 
             function updateCharts() {
@@ -672,7 +704,7 @@
                     d80point: { type: 'point', xValue: d80, yValue: 80, radius: 5, backgroundColor: 'rgba(231, 76, 60, 1)' }
                 };
 
-                const passingOptions = { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: translations[currentLang]['chart_title_passing'], color: 'white', font: { size: 18 } }, legend: { position: 'top' }, annotation: { annotations: passingAnnotations } }, scales: { x: { type: 'logarithmic', reverse: true, title: { display: true, text: translations[currentLang]['chart_xaxis_label'], color: 'white' }, ticks: { color: 'white' } }, y: { beginAtZero: true, max: 100, title: { display: true, text: translations[currentLang]['chart_yaxis_passing'], color: 'white' }, ticks: { color: 'white' } } } };
+                const passingOptions = { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: translations[currentLang]['chart_title_passing'], color: 'white', font: { size: 18 } }, legend: { position: 'top' }, annotation: { annotations: passingAnnotations } }, scales: { x: { type: 'logarithmic', reverse: false, title: { display: true, text: translations[currentLang]['chart_xaxis_label'], color: 'white' }, ticks: { color: 'white' } }, y: { beginAtZero: true, max: 100, title: { display: true, text: translations[currentLang]['chart_yaxis_passing'], color: 'white' }, ticks: { color: 'white' } } } };
                 passingChart = new Chart(document.getElementById('passing-curve-chart'), { type: 'line', data: { labels: labels, datasets: [{ label: translations[currentLang]['chart_legend_passing'], data: passingPercent, borderColor: '#3498db', backgroundColor: 'rgba(52, 152, 219, 0.2)', fill: true, tension: 0.1 }] }, options: passingOptions });
 
                 const retainedAnnotations = {};
@@ -683,10 +715,10 @@
                     retainedAnnotations.line45k = { type: 'label', xValue: 45000, yValue: retained45mm, content: `${retained45mm.toFixed(1)}% @ 45mm`, backgroundColor: 'rgba(231, 76, 60, 0.8)', font: { size: 12 }, padding: 6, borderRadius: 6, yAdjust: 15 };
                 }
 
-                const retainedOptions = { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: translations[currentLang]['chart_title_retained'], color: 'white', font: { size: 18 } }, legend: { position: 'top' }, annotation: { annotations: retainedAnnotations } }, scales: { x: { type: 'logarithmic', reverse: true, title: { display: true, text: translations[currentLang]['chart_xaxis_label'], color: 'white' }, ticks: { color: 'white' } }, y: { beginAtZero: true, max: 100, title: { display: true, text: translations[currentLang]['chart_yaxis_retained'], color: 'white' }, ticks: { color: 'white' } } } };
+                const retainedOptions = { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: translations[currentLang]['chart_title_retained'], color: 'white', font: { size: 18 } }, legend: { position: 'top' }, annotation: { annotations: retainedAnnotations } }, scales: { x: { type: 'logarithmic', reverse: false, title: { display: true, text: translations[currentLang]['chart_xaxis_label'], color: 'white' }, ticks: { color: 'white' } }, y: { beginAtZero: true, max: 100, title: { display: true, text: translations[currentLang]['chart_yaxis_retained'], color: 'white' }, ticks: { color: 'white' } } } };
                 retainedChart = new Chart(document.getElementById('retained-curve-chart'), { type: 'line', data: { labels: labels, datasets: [{ label: translations[currentLang]['chart_legend_retained'], data: cumulativeRetainedPercent, borderColor: '#e74c3c', backgroundColor: 'rgba(231, 76, 60, 0.2)', fill: true, tension: 0.1 }] }, options: retainedOptions });
 
-                const histogramOptions = { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: translations[currentLang]['chart_title_histogram'], color: 'white', font: { size: 18 } }, legend: { display: false }, annotation: { annotations: { meanLine: { type: 'line', scaleID: 'x', value: mean, borderColor: '#e74c3c', borderWidth: 3, label: { content: `${translations[currentLang]['mean_label']}: ${mean.toFixed(0)} µm`, enabled: true, position: 'top', backgroundColor: 'rgba(231, 76, 60, 0.8)' } }, stdDevLabel: { type: 'label', xValue: mean, yValue: Math.max(...retainedPercent) * 0.9, backgroundColor: 'rgba(44, 62, 80, 0.7)', content: `${translations[currentLang]['std_dev_label']}: ${stdDev.toFixed(0)}`, font: { size: 12 }, padding: 6, borderRadius: 6 } } } }, scales: { x: { type: 'logarithmic', reverse: true, title: { display: true, text: translations[currentLang]['chart_xaxis_label'], color: 'white' }, ticks: { color: 'white' } }, y: { beginAtZero: true, title: { display: true, text: translations[currentLang]['chart_yaxis_retained_hist'], color: 'white' }, ticks: { color: 'white' } } } };
+                const histogramOptions = { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: translations[currentLang]['chart_title_histogram'], color: 'white', font: { size: 18 } }, legend: { display: false }, annotation: { annotations: { meanLine: { type: 'line', scaleID: 'x', value: mean, borderColor: '#e74c3c', borderWidth: 3, label: { content: `${translations[currentLang]['mean_label']}: ${mean.toFixed(0)} µm`, enabled: true, position: 'top', backgroundColor: 'rgba(231, 76, 60, 0.8)' } }, stdDevLabel: { type: 'label', xValue: mean, yValue: Math.max(...retainedPercent) * 0.9, backgroundColor: 'rgba(44, 62, 80, 0.7)', content: `${translations[currentLang]['std_dev_label']}: ${stdDev.toFixed(0)}`, font: { size: 12 }, padding: 6, borderRadius: 6 } } } }, scales: { x: { type: 'logarithmic', reverse: false, title: { display: true, text: translations[currentLang]['chart_xaxis_label'], color: 'white' }, ticks: { color: 'white' } }, y: { beginAtZero: true, title: { display: true, text: translations[currentLang]['chart_yaxis_retained_hist'], color: 'white' }, ticks: { color: 'white' } } } };
                 histogramChart = new Chart(document.getElementById('histogram-chart'), { type: 'bar', data: { datasets: [{ label: translations[currentLang]['chart_legend_retained_hist'], data: labels.map((label, i) => ({ x: label, y: retainedPercent[i] })), backgroundColor: '#f1c40f', borderColor: '#f39c12', borderWidth: 1 }] }, options: histogramOptions });
             }
 
@@ -721,15 +753,15 @@
 
             const translations = {
                 en: {
-                    title: "Gradation Analysis of Materials", header_title: "Gradation Analysis", lang_button: "فارسی", export_word: "Export Word", export_excel: "Export Excel",
+                    title: "Gradation Analysis of Materials", header_title: "Gradation Analysis", lang_button: "فارسی", export_pdf: "Export PDF", export_excel: "Export Excel",
                     material_selection_title: "1. Select Material & Standard", crushed_rock: "Crushed Rock", concrete_aggregates: "Concrete Aggregates", soil_clay: "Soil/Clay",
                     astm: "ASTM", iso: "ISO", aashto: "AASHTO", sieve_inputs_title: "2. Enter Sieve Data", sieve_size: "Sieve Size (µm)", retained_weight: "Retained Weight (g)",
                     actions: "Actions", add_sieve: "Add Sieve", delete_button: "Delete", calculate_button: "Calculate", results_title: "3. Analysis Results", cu: "Coefficient of Uniformity (Cu):",
                     cc: "Coefficient of Curvature (Cc):", mean: "Weighted Mean (µm):", std_dev: "Standard Deviation:", analysis_title: "Text Analysis", charts_title: "4. Charts",
                     retained_75mm: "Percent Greater than 75mm:", retained_45mm: "Percent Greater than 45mm:",
                     alert_no_weight: "Total weight cannot be zero. Please enter retained weights.", alert_no_calculation: "Please perform a calculation first.", generating: "Generating...",
-                    word_modal_title: "Word Report Information", word_modal_report_title: "Report Title", word_modal_report_desc: "Description", word_modal_report_date: "Date",
-                    word_modal_cancel: "Cancel", word_modal_confirm: "Generate Report", pan: "Pan",
+                    pdf_modal_title: "PDF Report Information", pdf_modal_report_title: "Report Title", pdf_modal_report_desc: "Description", pdf_modal_report_date: "Date",
+                    pdf_modal_cancel: "Cancel", pdf_modal_confirm: "Generate Report", pan: "Pan",
                     chart_title_passing: "Cumulative Passing Curve", chart_title_retained: "Cumulative Retained Curve", chart_title_histogram: "Histogram (Percent Retained)",
                     chart_xaxis_label: "Sieve Size (µm) - Log Scale", chart_yaxis_passing: "Passing (%)", chart_yaxis_retained: "Retained (%)", chart_yaxis_retained_hist: "Percent Retained (%)",
                     chart_legend_passing: "Cumulative Passing", chart_legend_retained: "Cumulative Retained", chart_legend_retained_hist: "Percent Retained", mean_label: "Mean", std_dev_label: "Std Dev",
@@ -767,15 +799,15 @@
                     analysis_heap_leach_d80_fine: "This is a fine crush, which may increase recovery but could risk heap stability and permeability. "
                 },
                 fa: {
-                    title: "آنالیز دانه‌بندی مصالح", header_title: "آنالیز دانه‌بندی", lang_button: "English", export_word: "خروجی Word", export_excel: "خروجی Excel",
+                    title: "آنالیز دانه‌بندی مصالح", header_title: "آنالیز دانه‌بندی", lang_button: "English", export_pdf: "خروجی PDF", export_excel: "خروجی Excel",
                     material_selection_title: "۱. انتخاب نوع مصالح و استاندارد", crushed_rock: "سنگ شکن", concrete_aggregates: "بتن", soil_clay: "رس",
                     astm: "ASTM", iso: "ISO", aashto: "AASHTO", sieve_inputs_title: "۲. ورود اطلاعات سرندها", sieve_size: "اندازه سرند (µm)", retained_weight: "وزن باقی‌مانده (گرم)",
                     actions: "عملیات", add_sieve: "افزودن سرند", delete_button: "حذف", calculate_button: "محاسبه", results_title: "۳. نتایج آنالیز", cu: "ضریب یکنواختی (Cu):",
                     cc: "ضریب انحنا (Cc):", mean: "میانگین وزنی (μm):", std_dev: "انحراف معیار:", analysis_title: "تحلیل متنی", charts_title: "۴. نمودارها",
                     retained_75mm: "درصد بزرگتر از ۷۵ میلی متر:", retained_45mm: "درصد بزرگتر از ۴۵ میلی متر:",
                     alert_no_weight: "وزن کل نمی‌تواند صفر باشد. لطفاً وزن‌های باقی‌مانده را وارد کنید.", alert_no_calculation: "لطفاً ابتدا یک محاسبه انجام دهید.", generating: "در حال تولید...",
-                    word_modal_title: "اطلاعات گزارش Word", word_modal_report_title: "عنوان گزارش", word_modal_report_desc: "توضیحات", word_modal_report_date: "تاریخ",
-                    word_modal_cancel: "انصراف", word_modal_confirm: "تولید گزارش", pan: "سینی",
+                    pdf_modal_title: "اطلاعات گزارش PDF", pdf_modal_report_title: "عنوان گزارش", pdf_modal_report_desc: "توضیحات", pdf_modal_report_date: "تاریخ",
+                    pdf_modal_cancel: "انصراف", pdf_modal_confirm: "تولید گزارش", pan: "سینی",
                     chart_title_passing: "منحنی تجمعی عبوری", chart_title_retained: "منحنی تجمعی باقی‌مانده", chart_title_histogram: "هیستوگرام (درصد باقی‌مانده)",
                     chart_xaxis_label: "اندازه سرند (µm) - مقیاس لگاریتمی", chart_yaxis_passing: "درصد عبوری (%)", chart_yaxis_retained: "درصد باقی‌مانده (%)", chart_yaxis_retained_hist: "درصد باقی‌مانده (%)",
                     chart_legend_passing: "عبوری تجمعی", chart_legend_retained: "باقی‌مانده تجمعی", chart_legend_retained_hist: "درصد باقی‌مانده", mean_label: "میانگین", std_dev_label: "انحراف معیار",
