@@ -318,7 +318,7 @@
                 const coeffs = { cu, cc };
                 const stats = { mean: weightedMean, stdDev: standardDeviation, retained75mm, retained45mm, fm: finenessModulus };
 
-                const analysisKeys = generateTextAnalysis(coeffs, sieves, stats, materialType);
+                const analysisKeys = generateTextAnalysis(coeffs, dValues, stats, materialType, passingData);
                 const analysisText = analysisKeys.map(key => {
                     if (typeof key === 'object') {
                         return (translations[currentLang][key.key] || key.key).replace('{value}', key.value);
@@ -336,16 +336,17 @@
                 updateCharts();
             }
 
-            function generateTextAnalysis(coeffs, sieves, stats, materialType) {
+            function generateTextAnalysis(coeffs, dValues, stats, materialType, passingData) {
                 const { cu, cc } = coeffs;
                 const { fm } = stats;
+                const { d80 } = dValues;
                 const keys = [];
 
-                const passing75micron = sieves.find(s => s.size === 75)?.passingPercent;
-                if (passing75micron === undefined) return ['analysis_err_no_fines'];
+                const passing75micron = getPassingForDiameter(75, passingData);
+                if (passing75micron === null) return ['analysis_err_no_fines'];
 
-                const passing4750micron = sieves.find(s => s.size === 4750)?.passingPercent;
-                if (passing4750micron === undefined) return ['analysis_err_no_split'];
+                const passing4750micron = getPassingForDiameter(4750, passingData);
+                if (passing4750micron === null) return ['analysis_err_no_split'];
 
                 const finesPercent = passing75micron;
                 const gravelPercent = 100 - passing4750micron;
@@ -397,10 +398,17 @@
                         keys.push('analysis_fm_na');
                     }
                 } else if (materialType === 'crushed-rock') {
-                    keys.push('analysis_title_crusher');
-                    const maxSieve = sieves.filter(s => !s.isPan)[0];
-                    if (maxSieve) {
-                        keys.push({key: 'analysis_crusher_max_size', value: (maxSieve.size / 1000).toFixed(1) });
+                    keys.push('analysis_title_heap_leach');
+                    if (finesPercent < 15) {
+                        keys.push({key: 'analysis_heap_leach_fines_ok', value: finesPercent.toFixed(1)});
+                    } else {
+                        keys.push({key: 'analysis_heap_leach_fines_high', value: finesPercent.toFixed(1)});
+                    }
+                    if (d80) {
+                        const d80_mm = d80 / 1000;
+                        keys.push({key: 'analysis_heap_leach_d80', value: d80_mm.toFixed(1)});
+                        if (d80_mm > 20) keys.push('analysis_heap_leach_d80_coarse');
+                        else if (d80_mm < 5) keys.push('analysis_heap_leach_d80_fine');
                     }
                 }
 
@@ -526,99 +534,104 @@
                     return;
                 }
 
-                const { Document, Packer, Paragraph, TextRun, ImageRun, Table, TableCell, TableRow, WidthType, BorderStyle } = docx;
-
-                const { sieves, dValues, coeffs, stats, analysisText } = lastCalculationData;
+                const { Document, Packer, Paragraph, TextRun, ImageRun, Table, TableCell, TableRow, WidthType, HeadingLevel, AlignmentType, BorderStyle } = docx;
                 const isFa = currentLang === 'fa';
 
-                // --- 1. Get Custom User Input ---
+                // --- 1. Get Custom User Input & Data ---
                 const reportTitle = document.getElementById('report-title').value || (isFa ? "گزارش تحلیل دانه‌بندی" : "Gradation Analysis Report");
                 const reportDesc = document.getElementById('report-desc').value;
                 const reportDate = document.getElementById('report-date').value;
+                const { sieves, dValues, coeffs, stats, analysisText } = lastCalculationData;
 
                 // --- 2. Generate Chart Images ---
                 const chartConfigs = [
-                    { id: 'passing-curve-chart', width: 600, height: 300 },
-                    { id: 'retained-curve-chart', width: 600, height: 300 },
-                    { id: 'histogram-chart', width: 600, height: 300 }
+                    { id: 'passing-curve-chart', title: translations[currentLang]['chart_title_passing'] },
+                    { id: 'retained-curve-chart', title: translations[currentLang]['chart_title_retained'] },
+                    { id: 'histogram-chart', title: translations[currentLang]['chart_title_histogram'] }
                 ];
                 const chartImages = [];
                 for (const config of chartConfigs) {
-                    const canvas = await html2canvas(document.getElementById(config.id));
+                    const canvas = await html2canvas(document.getElementById(config.id), { backgroundColor: '#34495e' });
                     chartImages.push({
                         buffer: canvas.toDataURL('image/png'),
-                        width: config.width,
-                        height: config.height,
+                        title: config.title
                     });
                 }
 
-                // --- 3. Create Document Structure ---
+                // --- 3. Define Styles ---
                 const doc = new Document({
-                    sections: [{
-                        properties: {
-                            page: {
-                                size: {
-                                    orientation: docx.PageOrientation.LANDSCAPE,
-                                },
-                            },
+                    creator: "Sieve Analysis App",
+                    title: reportTitle,
+                    description: reportDesc,
+                    styles: {
+                        default: {
+                            heading1: { run: { size: 44, bold: true, color: "2E74B5" }, paragraph: { spacing: { before: 240, after: 120 } } },
+                            heading2: { run: { size: 28, bold: true, color: "2E74B5" }, paragraph: { spacing: { before: 240, after: 120 } } },
                         },
+                    },
+                    features: {
+                        updateFields: true,
+                    },
+                    settings: {
+                        compatabilityMode: docx.CompatibilityMode.WORD_2010,
+                        view: new docx.View({ rtl: isFa }),
+                    },
+                    sections: [{
                         children: [
-                            new Paragraph({
-                                children: [new TextRun({ text: reportTitle, bold: true, size: 36 })],
-                                alignment: docx.AlignmentType.CENTER,
-                            }),
-                            new Paragraph({
-                                children: [new TextRun({ text: reportDate, size: 24, italics: true })],
-                                alignment: docx.AlignmentType.CENTER,
-                            }),
-                            new Paragraph({
-                                children: [new TextRun({ text: reportDesc, size: 22 })],
-                                spacing: { after: 200 },
-                            }),
+                            new Paragraph({ text: reportTitle, heading: HeadingLevel.TITLE, alignment: AlignmentType.CENTER }),
+                            new Paragraph({ text: reportDate, alignment: AlignmentType.CENTER, style: "IntenseQuote" }),
+                            new Paragraph({ text: reportDesc, spacing: { after: 300 } }),
 
-                            // --- 4. Add Summary Table ---
-                            new Paragraph({ text: "Summary Results", style: "Well Spaced", heading: docx.HeadingLevel.HEADING_1 }),
+                            // --- Summary Table ---
+                            new Paragraph({ text: translations[currentLang]['results_title'], heading: HeadingLevel.HEADING_1 }),
                             new Table({
+                                width: { size: 100, type: WidthType.PERCENTAGE },
                                 rows: [
                                     new TableRow({
                                         children: [
-                                            new TableCell({ children: [new Paragraph("Parameter")], width: { size: 4500, type: WidthType.DXA } }),
-                                            new TableCell({ children: [new Paragraph("Value")], width: { size: 4500, type: WidthType.DXA } }),
+                                            new TableCell({ children: [new Paragraph({text: "Parameter", children: [new TextRun({bold: true})]})]}),
+                                            new TableCell({ children: [new Paragraph({text: "Value", children: [new TextRun({bold: true})]})]}),
                                         ],
                                     }),
                                     ...Object.entries(dValues).map(([key, value]) => new TableRow({ children: [new TableCell({ children: [new Paragraph(key)] }), new TableCell({ children: [new Paragraph(value.toFixed(3))] })] })),
-                                    new TableRow({ children: [new TableCell({ children: [new Paragraph("Cu")] }), new TableCell({ children: [new Paragraph(coeffs.cu.toFixed(2)) ] })] }),
-                                    new TableRow({ children: [new TableCell({ children: [new Paragraph("Cc")] }), new TableCell({ children: [new Paragraph(coeffs.cc.toFixed(2)) ] })] }),
-                                    new TableRow({ children: [new TableCell({ children: [new Paragraph("Fineness Modulus")] }), new TableCell({ children: [new Paragraph(stats.fm.toFixed(2)) ] })] }),
-                                    new TableRow({ children: [new TableCell({ children: [new Paragraph("Retained > 75mm (%)")] }), new TableCell({ children: [new Paragraph(stats.retained75mm.toFixed(2)) ] })] }),
-                                    new TableRow({ children: [new TableCell({ children: [new Paragraph("Retained > 45mm (%)")] }), new TableCell({ children: [new Paragraph(stats.retained45mm.toFixed(2)) ] })] }),
+                                    new TableRow({ children: [new TableCell({ children: [new Paragraph("Cu")] }), new TableCell({ children: [new Paragraph(coeffs.cu.toFixed(2))] })] }),
+                                    new TableRow({ children: [new TableCell({ children: [new Paragraph("Cc")] }), new TableCell({ children: [new Paragraph(coeffs.cc.toFixed(2))] })] }),
+                                    new TableRow({ children: [new TableCell({ children: [new Paragraph("Fineness Modulus")] }), new TableCell({ children: [new Paragraph(stats.fm.toFixed(2))] })] }),
+                                    new TableRow({ children: [new TableCell({ children: [new Paragraph("Retained > 75mm (%)")] }), new TableCell({ children: [new Paragraph(stats.retained75mm.toFixed(2))] })] }),
+                                    new TableRow({ children: [new TableCell({ children: [new Paragraph("Retained > 45mm (%)")] }), new TableCell({ children: [new Paragraph(stats.retained45mm.toFixed(2))] })] }),
                                 ],
-                                width: { size: 9000, type: WidthType.DXA },
                             }),
 
-                             // --- 5. Add Text Analysis ---
-                            new Paragraph({ text: "Textual Analysis", style: "Well Spaced", heading: docx.HeadingLevel.HEADING_1 }),
-                            new Paragraph(analysisText),
+                            // --- Text Analysis ---
+                            new Paragraph({ text: translations[currentLang]['analysis_title'], heading: HeadingLevel.HEADING_1 }),
+                            new Paragraph({ text: analysisText, spacing: { after: 300 } }),
 
-                            // --- 6. Add Charts ---
-                             new Paragraph({ text: "Charts", style: "Well Spaced", heading: docx.HeadingLevel.HEADING_1 }),
-                            ...chartImages.map(img => new Paragraph({ children: [new ImageRun({ data: img.buffer, transformation: { width: img.width, height: img.height } })] })),
+                            // --- Charts ---
+                            new Paragraph({ text: translations[currentLang]['charts_title'], heading: HeadingLevel.HEADING_1, pageBreakBefore: true }),
+                            ...chartImages.flatMap(img => [
+                                new Paragraph({
+                                    children: [new ImageRun({ data: img.buffer, transformation: { width: 600, height: 300 } })],
+                                    alignment: AlignmentType.CENTER
+                                }),
+                                new Paragraph({ text: img.title, alignment: AlignmentType.CENTER, style: "Caption" })
+                            ]),
 
-                            // --- 7. Add Raw Data Table ---
-                            new Paragraph({ text: "Raw Data", style: "Well Spaced", heading: docx.HeadingLevel.HEADING_1 }),
+                            // --- Raw Data Table ---
+                            new Paragraph({ text: "Raw Data", heading: HeadingLevel.HEADING_1, pageBreakBefore: true }),
                             new Table({
+                                width: { size: 100, type: WidthType.PERCENTAGE },
                                 rows: [
                                     new TableRow({
                                         children: [
-                                            new TableCell({ children: [new Paragraph("Sieve Size (µm)")] }),
-                                            new TableCell({ children: [new Paragraph("Retained Weight (g)")] }),
-                                            new TableCell({ children: [new Paragraph("Cumulative Retained (%)")] }),
-                                            new TableCell({ children: [new Paragraph("Passing (%)")] }),
+                                            new TableCell({ children: [new Paragraph(translations[currentLang]['sieve_size'])] }),
+                                            new TableCell({ children: [new Paragraph(translations[currentLang]['retained_weight'])] }),
+                                            new TableCell({ children: [new Paragraph('Cumulative Retained (%)')] }),
+                                            new TableCell({ children: [new Paragraph('Passing (%)')] }),
                                         ],
                                     }),
                                     ...sieves.map(sieve => new TableRow({
                                         children: [
-                                            new TableCell({ children: [new Paragraph(sieve.isPan ? 'Pan' : sieve.size.toString())] }),
+                                            new TableCell({ children: [new Paragraph(sieve.isPan ? translations[currentLang]['pan'] : sieve.size.toString())] }),
                                             new TableCell({ children: [new Paragraph(sieve.weight.toString())] }),
                                             new TableCell({ children: [new Paragraph(sieve.cumulativeRetainedPercent.toFixed(2))] }),
                                             new TableCell({ children: [new Paragraph(sieve.passingPercent.toFixed(2))] }),
@@ -630,7 +643,7 @@
                     }]
                 });
 
-                // --- 8. Save Document ---
+                // --- 4. Save Document ---
                 Packer.toBlob(doc).then(blob => {
                     saveAs(blob, "Sieve_Analysis_Report.docx");
                 });
@@ -641,30 +654,36 @@
             function updateCharts() {
                 if (!lastCalculationData) return;
                 const { sieves, stats, dValues, passingData } = lastCalculationData;
-                const { mean, stdDev } = stats;
+                const { mean, stdDev, retained75mm, retained45mm } = stats;
                 const { d80 } = dValues;
+
                 const labels = sieves.filter(s => !s.isPan).map(s => s.size).reverse();
                 const passingPercent = sieves.filter(s => !s.isPan).map(s => s.passingPercent).reverse();
                 const cumulativeRetainedPercent = sieves.filter(s => !s.isPan).map(s => s.cumulativeRetainedPercent).reverse();
                 const totalWeight = sieves.reduce((sum, s) => sum + s.weight, 0);
                 const retainedPercent = sieves.filter(s => !s.isPan).map(s => (s.weight / totalWeight) * 100).reverse();
-                const passing75k = getPassingForDiameter(75000, passingData);
-                const passing45k = getPassingForDiameter(45000, passingData);
 
                 if (passingChart) passingChart.destroy();
                 if (retainedChart) retainedChart.destroy();
                 if (histogramChart) histogramChart.destroy();
 
                 const passingAnnotations = {
-                    d80Line: { type: 'point', xValue: d80, yValue: 80, backgroundColor: 'rgba(231, 76, 60, 0.8)', radius: 6, label: { content: `D80: ${d80.toFixed(1)} µm`, enabled: true, position: 'start', color: 'white', backgroundColor: 'rgba(231, 76, 60, 0.8)' } }
+                    d80Line: { type: 'line', yMin: 80, yMax: 80, borderColor: 'rgba(231, 76, 60, 0.8)', borderWidth: 2, borderDash: [6, 6], label: { content: `D80 = ${d80.toFixed(1)} µm`, enabled: true, position: 'start', backgroundColor: 'rgba(231, 76, 60, 0.8)' } },
+                    d80point: { type: 'point', xValue: d80, yValue: 80, radius: 5, backgroundColor: 'rgba(231, 76, 60, 1)' }
                 };
-                if (passing75k !== null) passingAnnotations.line75k = { type: 'label', xValue: 75000, yValue: passing75k, content: `${passing75k.toFixed(1)}% @ 75mm`, backgroundColor: 'rgba(44, 62, 80, 0.7)', font: { size: 10 }, padding: 4, borderRadius: 4, yAdjust: -15 };
-                if (passing45k !== null) passingAnnotations.line45k = { type: 'label', xValue: 45000, yValue: passing45k, content: `${passing45k.toFixed(1)}% @ 45mm`, backgroundColor: 'rgba(44, 62, 80, 0.7)', font: { size: 10 }, padding: 4, borderRadius: 4, yAdjust: 15 };
 
                 const passingOptions = { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: translations[currentLang]['chart_title_passing'], color: 'white', font: { size: 18 } }, legend: { position: 'top' }, annotation: { annotations: passingAnnotations } }, scales: { x: { type: 'logarithmic', reverse: true, title: { display: true, text: translations[currentLang]['chart_xaxis_label'], color: 'white' }, ticks: { color: 'white' } }, y: { beginAtZero: true, max: 100, title: { display: true, text: translations[currentLang]['chart_yaxis_passing'], color: 'white' }, ticks: { color: 'white' } } } };
                 passingChart = new Chart(document.getElementById('passing-curve-chart'), { type: 'line', data: { labels: labels, datasets: [{ label: translations[currentLang]['chart_legend_passing'], data: passingPercent, borderColor: '#3498db', backgroundColor: 'rgba(52, 152, 219, 0.2)', fill: true, tension: 0.1 }] }, options: passingOptions });
 
-                const retainedOptions = { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: translations[currentLang]['chart_title_retained'], color: 'white', font: { size: 18 } }, legend: { position: 'top' } }, scales: { x: { type: 'logarithmic', reverse: true, title: { display: true, text: translations[currentLang]['chart_xaxis_label'], color: 'white' }, ticks: { color: 'white' } }, y: { beginAtZero: true, max: 100, title: { display: true, text: translations[currentLang]['chart_yaxis_retained'], color: 'white' }, ticks: { color: 'white' } } } };
+                const retainedAnnotations = {};
+                if (retained75mm !== null) {
+                    retainedAnnotations.line75k = { type: 'label', xValue: 75000, yValue: retained75mm, content: `${retained75mm.toFixed(1)}% @ 75mm`, backgroundColor: 'rgba(231, 76, 60, 0.8)', font: { size: 12 }, padding: 6, borderRadius: 6, yAdjust: -15 };
+                }
+                if (retained45mm !== null) {
+                    retainedAnnotations.line45k = { type: 'label', xValue: 45000, yValue: retained45mm, content: `${retained45mm.toFixed(1)}% @ 45mm`, backgroundColor: 'rgba(231, 76, 60, 0.8)', font: { size: 12 }, padding: 6, borderRadius: 6, yAdjust: 15 };
+                }
+
+                const retainedOptions = { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: translations[currentLang]['chart_title_retained'], color: 'white', font: { size: 18 } }, legend: { position: 'top' }, annotation: { annotations: retainedAnnotations } }, scales: { x: { type: 'logarithmic', reverse: true, title: { display: true, text: translations[currentLang]['chart_xaxis_label'], color: 'white' }, ticks: { color: 'white' } }, y: { beginAtZero: true, max: 100, title: { display: true, text: translations[currentLang]['chart_yaxis_retained'], color: 'white' }, ticks: { color: 'white' } } } };
                 retainedChart = new Chart(document.getElementById('retained-curve-chart'), { type: 'line', data: { labels: labels, datasets: [{ label: translations[currentLang]['chart_legend_retained'], data: cumulativeRetainedPercent, borderColor: '#e74c3c', backgroundColor: 'rgba(231, 76, 60, 0.2)', fill: true, tension: 0.1 }] }, options: retainedOptions });
 
                 const histogramOptions = { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: translations[currentLang]['chart_title_histogram'], color: 'white', font: { size: 18 } }, legend: { display: false }, annotation: { annotations: { meanLine: { type: 'line', scaleID: 'x', value: mean, borderColor: '#e74c3c', borderWidth: 3, label: { content: `${translations[currentLang]['mean_label']}: ${mean.toFixed(0)} µm`, enabled: true, position: 'top', backgroundColor: 'rgba(231, 76, 60, 0.8)' } }, stdDevLabel: { type: 'label', xValue: mean, yValue: Math.max(...retainedPercent) * 0.9, backgroundColor: 'rgba(44, 62, 80, 0.7)', content: `${translations[currentLang]['std_dev_label']}: ${stdDev.toFixed(0)}`, font: { size: 12 }, padding: 6, borderRadius: 6 } } } }, scales: { x: { type: 'logarithmic', reverse: true, title: { display: true, text: translations[currentLang]['chart_xaxis_label'], color: 'white' }, ticks: { color: 'white' } }, y: { beginAtZero: true, title: { display: true, text: translations[currentLang]['chart_yaxis_retained_hist'], color: 'white' }, ticks: { color: 'white' } } } };
@@ -740,8 +759,12 @@
                     analysis_fm_fine: "This indicates the sand is finer than is typical for concrete aggregate.",
                     analysis_fm_coarse: "This indicates the sand is coarser than is typical for concrete aggregate.",
                     analysis_fm_na: "Fineness Modulus could not be calculated. Ensure standard sieves are included.",
-                    analysis_title_crusher: "\nCrushed Rock Analysis: ",
-                    analysis_crusher_max_size: "The nominal maximum particle size is approximately {value} mm."
+                    analysis_title_heap_leach: "\nHeap Leach (Oxidized Copper) Analysis: ",
+                    analysis_heap_leach_fines_ok: "Fines content ({value}%) is suitable for maintaining heap permeability. ",
+                    analysis_heap_leach_fines_high: "Fines content ({value}%) is high, which may risk reducing heap permeability and recovery. ",
+                    analysis_heap_leach_d80: "The D80 crush size is {value} mm. ",
+                    analysis_heap_leach_d80_coarse: "This is a coarse crush, which may lead to lower copper recovery. ",
+                    analysis_heap_leach_d80_fine: "This is a fine crush, which may increase recovery but could risk heap stability and permeability. "
                 },
                 fa: {
                     title: "آنالیز دانه‌بندی مصالح", header_title: "آنالیز دانه‌بندی", lang_button: "English", export_word: "خروجی Word", export_excel: "خروجی Excel",
@@ -782,8 +805,12 @@
                     analysis_fm_fine: "این نشان می‌دهد که ماسه ریزتر از حد معمول برای سنگدانه بتن است.",
                     analysis_fm_coarse: "این نشان می‌دهد که ماسه درشت‌تر از حد معمول برای سنگدانه بتن است.",
                     analysis_fm_na: "مدول نرمی قابل محاسبه نیست. از وجود سرندهای استاندارد اطمینان حاصل کنید.",
-                    analysis_title_crusher: "\nتحلیل سنگ شکن: ",
-                    analysis_crusher_max_size: "حداکثر اندازه اسمی ذرات تقریباً {value} میلی‌متر است."
+                    analysis_title_heap_leach: "\nتحلیل هیپ لیچینگ (مس اکسیدی): ",
+                    analysis_heap_leach_fines_ok: "میزان ریزدانه ({value}٪) برای حفظ نفوذپذیری توده مناسب است. ",
+                    analysis_heap_leach_fines_high: "میزان ریزدانه ({value}٪) بالا است که می‌تواند خطر کاهش نفوذپذیری و بازیابی را به همراه داشته باشد. ",
+                    analysis_heap_leach_d80: "اندازه خردایش D80 برابر با {value} میلی‌متر است. ",
+                    analysis_heap_leach_d80_coarse: "این خردایش درشت است که ممکن است منجر به بازیابی کمتر مس شود. ",
+                    analysis_heap_leach_d80_fine: "این خردایش ریز است که ممکن است بازیابی را افزایش دهد اما می‌تواند پایداری و نفوذپذیری توده را به خطر اندازد. "
                 }
             };
 
