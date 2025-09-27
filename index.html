@@ -285,8 +285,22 @@
                 document.getElementById('mean-value').textContent = weightedMean.toFixed(3);
                 document.getElementById('std-dev-value').textContent = standardDeviation.toFixed(2);
 
-                const passing75mm = getPassingForDiameter(75000, passingData) ?? 0;
-                const passing45mm = getPassingForDiameter(45000, passingData) ?? 0;
+                let passing75mm, passing45mm;
+
+                const sieve75mm = sieves.find(s => s.size === 75000);
+                if (sieve75mm) {
+                    passing75mm = sieve75mm.passingPercent;
+                } else {
+                    passing75mm = getPassingForDiameter(75000, passingData) ?? 0;
+                }
+
+                const sieve45mm = sieves.find(s => s.size === 45000);
+                if (sieve45mm) {
+                    passing45mm = sieve45mm.passingPercent;
+                } else {
+                    passing45mm = getPassingForDiameter(45000, passingData) ?? 0;
+                }
+
                 const retained75mm = 100 - passing75mm;
                 const retained45mm = 100 - passing45mm;
 
