@@ -41,6 +41,7 @@ self.onmessage = function(e) {
                     return;
                 }
                 pixelsPerMm = refPixelLength / refDiameter;
+                // Create a virtual circle for filtering particles
                 refCircle = {
                     x: (manualLine.start.x + manualLine.end.x) / 2,
                     y: (manualLine.start.y + manualLine.end.y) / 2,
